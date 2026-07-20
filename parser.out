@@ -4,55 +4,81 @@ Unused terminals:
 
     LPAREN
     RPAREN
+    Uminus
 
 Grammar
 
 Rule 0     S' -> program
 Rule 1     program -> statements
-Rule 2     statement -> expression
+Rule 2     statement -> expression optional_semicolon
 Rule 3     statements -> statement
 Rule 4     statements -> statements statement
 Rule 5     statement -> empty
 Rule 6     expression -> variable
-Rule 7     expression -> bin_ops
+Rule 7     expression -> bin_ops optional_semicolon
 Rule 8     variable -> INT
-Rule 9     bin_ops -> expression ADD expression
-Rule 10    bin_ops -> expression SUB expression
-Rule 11    bin_ops -> expression MUL expression
-Rule 12    bin_ops -> expression DIV expression
-Rule 13    type -> INT_TYPE
-Rule 14    statement -> LET ID COLON type ASSIGN expression
-Rule 15    empty -> <empty>
-Rule 16    optional_semicolon -> SEMICOLON
-Rule 17    optional_semicolon -> empty
+Rule 9     variable -> STR
+Rule 10    variable -> ID
+Rule 11    expression -> NOT expression
+Rule 12    expression -> SUB expression
+Rule 13    bin_ops -> expression ADD expression
+Rule 14    bin_ops -> expression SUB expression
+Rule 15    bin_ops -> expression MUL expression
+Rule 16    bin_ops -> expression DIV expression
+Rule 17    bin_ops -> expression MOD expression
+Rule 18    bin_ops -> expression POW expression
+Rule 19    bin_ops -> expression GT expression
+Rule 20    bin_ops -> expression LT expression
+Rule 21    bin_ops -> expression GE expression
+Rule 22    bin_ops -> expression LE expression
+Rule 23    bin_ops -> expression EQ expression
+Rule 24    bin_ops -> expression NE expression
+Rule 25    type -> INT_TYPE
+Rule 26    type -> STR_TYPE
+Rule 27    statement -> LET ID COLON type ASSIGN expression optional_semicolon
+Rule 28    empty -> <empty>
+Rule 29    optional_semicolon -> SEMICOLON
+Rule 30    optional_semicolon -> empty
 
 Terminals, with rules where they appear
 
-ADD                  : 9
-ASSIGN               : 14
-COLON                : 14
-DIV                  : 12
-ID                   : 14
+ADD                  : 13
+ASSIGN               : 27
+COLON                : 27
+DIV                  : 16
+EQ                   : 23
+GE                   : 21
+GT                   : 19
+ID                   : 10 27
 INT                  : 8
-INT_TYPE             : 13
-LET                  : 14
+INT_TYPE             : 25
+LE                   : 22
+LET                  : 27
 LPAREN               : 
-MUL                  : 11
+LT                   : 20
+MOD                  : 17
+MUL                  : 15
+NE                   : 24
+NOT                  : 11
+POW                  : 18
 RPAREN               : 
-SEMICOLON            : 16
-SUB                  : 10
+SEMICOLON            : 29
+STR                  : 9
+STR_TYPE             : 26
+SUB                  : 12 14
+Uminus               : 
 error                : 
 
 Nonterminals, with rules where they appear
 
 bin_ops              : 7
-empty                : 5 17
-expression           : 2 9 9 10 10 11 11 12 12 14
-optional_semicolon   : 
+empty                : 5 30
+expression           : 2 11 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 22 23 23 24 24 27
+optional_semicolon   : 2 7 27
 program              : 0
 statement            : 3 4
 statements           : 1 4
-type                 : 14
+type                 : 27
 variable             : 6
 
 Parsing method: LALR
@@ -63,34 +89,58 @@ state 0
     (1) program -> . statements
     (3) statements -> . statement
     (4) statements -> . statements statement
-    (2) statement -> . expression
+    (2) statement -> . expression optional_semicolon
     (5) statement -> . empty
-    (14) statement -> . LET ID COLON type ASSIGN expression
+    (27) statement -> . LET ID COLON type ASSIGN expression optional_semicolon
     (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (15) empty -> .
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (28) empty -> .
     (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
   ! shift/reduce conflict for LET resolved as shift
+  ! shift/reduce conflict for NOT resolved as shift
+  ! shift/reduce conflict for SUB resolved as shift
   ! shift/reduce conflict for INT resolved as shift
+  ! shift/reduce conflict for STR resolved as shift
+  ! shift/reduce conflict for ID resolved as shift
     LET             shift and go to state 6
-    $end            reduce using rule 15 (empty -> .)
-    INT             shift and go to state 9
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    $end            reduce using rule 28 (empty -> .)
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! LET             [ reduce using rule 15 (empty -> .) ]
-  ! INT             [ reduce using rule 15 (empty -> .) ]
+  ! LET             [ reduce using rule 28 (empty -> .) ]
+  ! NOT             [ reduce using rule 28 (empty -> .) ]
+  ! SUB             [ reduce using rule 28 (empty -> .) ]
+  ! INT             [ reduce using rule 28 (empty -> .) ]
+  ! STR             [ reduce using rule 28 (empty -> .) ]
+  ! ID              [ reduce using rule 28 (empty -> .) ]
 
     program                        shift and go to state 1
     statements                     shift and go to state 2
     statement                      shift and go to state 3
     expression                     shift and go to state 4
     empty                          shift and go to state 5
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 1
 
@@ -102,78 +152,163 @@ state 2
 
     (1) program -> statements .
     (4) statements -> statements . statement
-    (2) statement -> . expression
+    (2) statement -> . expression optional_semicolon
     (5) statement -> . empty
-    (14) statement -> . LET ID COLON type ASSIGN expression
+    (27) statement -> . LET ID COLON type ASSIGN expression optional_semicolon
     (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (15) empty -> .
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (28) empty -> .
     (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
   ! shift/reduce conflict for LET resolved as shift
+  ! shift/reduce conflict for NOT resolved as shift
+  ! shift/reduce conflict for SUB resolved as shift
   ! reduce/reduce conflict for $end resolved using rule 1 (program -> statements .)
   ! shift/reduce conflict for INT resolved as shift
+  ! shift/reduce conflict for STR resolved as shift
+  ! shift/reduce conflict for ID resolved as shift
     $end            reduce using rule 1 (program -> statements .)
     LET             shift and go to state 6
-    INT             shift and go to state 9
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! LET             [ reduce using rule 15 (empty -> .) ]
-  ! INT             [ reduce using rule 15 (empty -> .) ]
-  ! $end            [ reduce using rule 15 (empty -> .) ]
+  ! LET             [ reduce using rule 28 (empty -> .) ]
+  ! NOT             [ reduce using rule 28 (empty -> .) ]
+  ! SUB             [ reduce using rule 28 (empty -> .) ]
+  ! INT             [ reduce using rule 28 (empty -> .) ]
+  ! STR             [ reduce using rule 28 (empty -> .) ]
+  ! ID              [ reduce using rule 28 (empty -> .) ]
+  ! $end            [ reduce using rule 28 (empty -> .) ]
 
-    statement                      shift and go to state 10
+    statement                      shift and go to state 14
     expression                     shift and go to state 4
     empty                          shift and go to state 5
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 3
 
     (3) statements -> statement .
 
     LET             reduce using rule 3 (statements -> statement .)
+    NOT             reduce using rule 3 (statements -> statement .)
+    SUB             reduce using rule 3 (statements -> statement .)
     INT             reduce using rule 3 (statements -> statement .)
+    STR             reduce using rule 3 (statements -> statement .)
+    ID              reduce using rule 3 (statements -> statement .)
     $end            reduce using rule 3 (statements -> statement .)
 
 
 state 4
 
-    (2) statement -> expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (2) statement -> expression . optional_semicolon
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+    (29) optional_semicolon -> . SEMICOLON
+    (30) optional_semicolon -> . empty
+    (28) empty -> .
 
-    LET             reduce using rule 2 (statement -> expression .)
-    INT             reduce using rule 2 (statement -> expression .)
-    $end            reduce using rule 2 (statement -> expression .)
-    ADD             shift and go to state 11
-    SUB             shift and go to state 12
-    MUL             shift and go to state 13
-    DIV             shift and go to state 14
+  ! shift/reduce conflict for SUB resolved as shift
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+    GT              shift and go to state 22
+    LT              shift and go to state 23
+    GE              shift and go to state 24
+    LE              shift and go to state 25
+    EQ              shift and go to state 26
+    NE              shift and go to state 27
+    SEMICOLON       shift and go to state 28
+    LET             reduce using rule 28 (empty -> .)
+    NOT             reduce using rule 28 (empty -> .)
+    INT             reduce using rule 28 (empty -> .)
+    STR             reduce using rule 28 (empty -> .)
+    ID              reduce using rule 28 (empty -> .)
+    $end            reduce using rule 28 (empty -> .)
 
+  ! SUB             [ reduce using rule 28 (empty -> .) ]
+
+    optional_semicolon             shift and go to state 15
+    empty                          shift and go to state 29
 
 state 5
 
     (5) statement -> empty .
 
     LET             reduce using rule 5 (statement -> empty .)
+    NOT             reduce using rule 5 (statement -> empty .)
+    SUB             reduce using rule 5 (statement -> empty .)
     INT             reduce using rule 5 (statement -> empty .)
+    STR             reduce using rule 5 (statement -> empty .)
+    ID              reduce using rule 5 (statement -> empty .)
     $end            reduce using rule 5 (statement -> empty .)
 
 
 state 6
 
-    (14) statement -> LET . ID COLON type ASSIGN expression
+    (27) statement -> LET . ID COLON type ASSIGN expression optional_semicolon
 
-    ID              shift and go to state 15
+    ID              shift and go to state 30
 
 
 state 7
+
+    (10) variable -> ID .
+
+    ADD             reduce using rule 10 (variable -> ID .)
+    SUB             reduce using rule 10 (variable -> ID .)
+    MUL             reduce using rule 10 (variable -> ID .)
+    DIV             reduce using rule 10 (variable -> ID .)
+    MOD             reduce using rule 10 (variable -> ID .)
+    POW             reduce using rule 10 (variable -> ID .)
+    GT              reduce using rule 10 (variable -> ID .)
+    LT              reduce using rule 10 (variable -> ID .)
+    GE              reduce using rule 10 (variable -> ID .)
+    LE              reduce using rule 10 (variable -> ID .)
+    EQ              reduce using rule 10 (variable -> ID .)
+    NE              reduce using rule 10 (variable -> ID .)
+    SEMICOLON       reduce using rule 10 (variable -> ID .)
+    LET             reduce using rule 10 (variable -> ID .)
+    NOT             reduce using rule 10 (variable -> ID .)
+    INT             reduce using rule 10 (variable -> ID .)
+    STR             reduce using rule 10 (variable -> ID .)
+    ID              reduce using rule 10 (variable -> ID .)
+    $end            reduce using rule 10 (variable -> ID .)
+
+
+state 8
 
     (6) expression -> variable .
 
@@ -181,25 +316,123 @@ state 7
     SUB             reduce using rule 6 (expression -> variable .)
     MUL             reduce using rule 6 (expression -> variable .)
     DIV             reduce using rule 6 (expression -> variable .)
+    MOD             reduce using rule 6 (expression -> variable .)
+    POW             reduce using rule 6 (expression -> variable .)
+    GT              reduce using rule 6 (expression -> variable .)
+    LT              reduce using rule 6 (expression -> variable .)
+    GE              reduce using rule 6 (expression -> variable .)
+    LE              reduce using rule 6 (expression -> variable .)
+    EQ              reduce using rule 6 (expression -> variable .)
+    NE              reduce using rule 6 (expression -> variable .)
+    SEMICOLON       reduce using rule 6 (expression -> variable .)
     LET             reduce using rule 6 (expression -> variable .)
+    NOT             reduce using rule 6 (expression -> variable .)
     INT             reduce using rule 6 (expression -> variable .)
+    STR             reduce using rule 6 (expression -> variable .)
+    ID              reduce using rule 6 (expression -> variable .)
     $end            reduce using rule 6 (expression -> variable .)
 
 
-state 8
-
-    (7) expression -> bin_ops .
-
-    ADD             reduce using rule 7 (expression -> bin_ops .)
-    SUB             reduce using rule 7 (expression -> bin_ops .)
-    MUL             reduce using rule 7 (expression -> bin_ops .)
-    DIV             reduce using rule 7 (expression -> bin_ops .)
-    LET             reduce using rule 7 (expression -> bin_ops .)
-    INT             reduce using rule 7 (expression -> bin_ops .)
-    $end            reduce using rule 7 (expression -> bin_ops .)
-
-
 state 9
+
+    (7) expression -> bin_ops . optional_semicolon
+    (29) optional_semicolon -> . SEMICOLON
+    (30) optional_semicolon -> . empty
+    (28) empty -> .
+
+  ! shift/reduce conflict for SEMICOLON resolved as shift
+    SEMICOLON       shift and go to state 28
+    ADD             reduce using rule 28 (empty -> .)
+    SUB             reduce using rule 28 (empty -> .)
+    MUL             reduce using rule 28 (empty -> .)
+    DIV             reduce using rule 28 (empty -> .)
+    MOD             reduce using rule 28 (empty -> .)
+    POW             reduce using rule 28 (empty -> .)
+    GT              reduce using rule 28 (empty -> .)
+    LT              reduce using rule 28 (empty -> .)
+    GE              reduce using rule 28 (empty -> .)
+    LE              reduce using rule 28 (empty -> .)
+    EQ              reduce using rule 28 (empty -> .)
+    NE              reduce using rule 28 (empty -> .)
+    LET             reduce using rule 28 (empty -> .)
+    NOT             reduce using rule 28 (empty -> .)
+    INT             reduce using rule 28 (empty -> .)
+    STR             reduce using rule 28 (empty -> .)
+    ID              reduce using rule 28 (empty -> .)
+    $end            reduce using rule 28 (empty -> .)
+
+  ! SEMICOLON       [ reduce using rule 28 (empty -> .) ]
+
+    optional_semicolon             shift and go to state 31
+    empty                          shift and go to state 29
+
+state 10
+
+    (11) expression -> NOT . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 32
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 11
+
+    (12) expression -> SUB . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 33
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 12
 
     (8) variable -> INT .
 
@@ -207,245 +440,1391 @@ state 9
     SUB             reduce using rule 8 (variable -> INT .)
     MUL             reduce using rule 8 (variable -> INT .)
     DIV             reduce using rule 8 (variable -> INT .)
+    MOD             reduce using rule 8 (variable -> INT .)
+    POW             reduce using rule 8 (variable -> INT .)
+    GT              reduce using rule 8 (variable -> INT .)
+    LT              reduce using rule 8 (variable -> INT .)
+    GE              reduce using rule 8 (variable -> INT .)
+    LE              reduce using rule 8 (variable -> INT .)
+    EQ              reduce using rule 8 (variable -> INT .)
+    NE              reduce using rule 8 (variable -> INT .)
+    SEMICOLON       reduce using rule 8 (variable -> INT .)
     LET             reduce using rule 8 (variable -> INT .)
+    NOT             reduce using rule 8 (variable -> INT .)
     INT             reduce using rule 8 (variable -> INT .)
+    STR             reduce using rule 8 (variable -> INT .)
+    ID              reduce using rule 8 (variable -> INT .)
     $end            reduce using rule 8 (variable -> INT .)
 
 
-state 10
+state 13
+
+    (9) variable -> STR .
+
+    ADD             reduce using rule 9 (variable -> STR .)
+    SUB             reduce using rule 9 (variable -> STR .)
+    MUL             reduce using rule 9 (variable -> STR .)
+    DIV             reduce using rule 9 (variable -> STR .)
+    MOD             reduce using rule 9 (variable -> STR .)
+    POW             reduce using rule 9 (variable -> STR .)
+    GT              reduce using rule 9 (variable -> STR .)
+    LT              reduce using rule 9 (variable -> STR .)
+    GE              reduce using rule 9 (variable -> STR .)
+    LE              reduce using rule 9 (variable -> STR .)
+    EQ              reduce using rule 9 (variable -> STR .)
+    NE              reduce using rule 9 (variable -> STR .)
+    SEMICOLON       reduce using rule 9 (variable -> STR .)
+    LET             reduce using rule 9 (variable -> STR .)
+    NOT             reduce using rule 9 (variable -> STR .)
+    INT             reduce using rule 9 (variable -> STR .)
+    STR             reduce using rule 9 (variable -> STR .)
+    ID              reduce using rule 9 (variable -> STR .)
+    $end            reduce using rule 9 (variable -> STR .)
+
+
+state 14
 
     (4) statements -> statements statement .
 
     LET             reduce using rule 4 (statements -> statements statement .)
+    NOT             reduce using rule 4 (statements -> statements statement .)
+    SUB             reduce using rule 4 (statements -> statements statement .)
     INT             reduce using rule 4 (statements -> statements statement .)
+    STR             reduce using rule 4 (statements -> statements statement .)
+    ID              reduce using rule 4 (statements -> statements statement .)
     $end            reduce using rule 4 (statements -> statements statement .)
 
 
-state 11
-
-    (9) bin_ops -> expression ADD . expression
-    (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
-
-    INT             shift and go to state 9
-
-    expression                     shift and go to state 16
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
-
-state 12
-
-    (10) bin_ops -> expression SUB . expression
-    (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
-
-    INT             shift and go to state 9
-
-    expression                     shift and go to state 17
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
-
-state 13
-
-    (11) bin_ops -> expression MUL . expression
-    (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
-
-    INT             shift and go to state 9
-
-    expression                     shift and go to state 18
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
-
-state 14
-
-    (12) bin_ops -> expression DIV . expression
-    (6) expression -> . variable
-    (7) expression -> . bin_ops
-    (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
-
-    INT             shift and go to state 9
-
-    expression                     shift and go to state 19
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
-
 state 15
 
-    (14) statement -> LET ID . COLON type ASSIGN expression
+    (2) statement -> expression optional_semicolon .
 
-    COLON           shift and go to state 20
+    LET             reduce using rule 2 (statement -> expression optional_semicolon .)
+    NOT             reduce using rule 2 (statement -> expression optional_semicolon .)
+    SUB             reduce using rule 2 (statement -> expression optional_semicolon .)
+    INT             reduce using rule 2 (statement -> expression optional_semicolon .)
+    STR             reduce using rule 2 (statement -> expression optional_semicolon .)
+    ID              reduce using rule 2 (statement -> expression optional_semicolon .)
+    $end            reduce using rule 2 (statement -> expression optional_semicolon .)
 
 
 state 16
 
-    (9) bin_ops -> expression ADD expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (13) bin_ops -> expression ADD . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ADD             reduce using rule 9 (bin_ops -> expression ADD expression .)
-    SUB             reduce using rule 9 (bin_ops -> expression ADD expression .)
-    LET             reduce using rule 9 (bin_ops -> expression ADD expression .)
-    INT             reduce using rule 9 (bin_ops -> expression ADD expression .)
-    $end            reduce using rule 9 (bin_ops -> expression ADD expression .)
-    MUL             shift and go to state 13
-    DIV             shift and go to state 14
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! MUL             [ reduce using rule 9 (bin_ops -> expression ADD expression .) ]
-  ! DIV             [ reduce using rule 9 (bin_ops -> expression ADD expression .) ]
-  ! ADD             [ shift and go to state 11 ]
-  ! SUB             [ shift and go to state 12 ]
-
+    expression                     shift and go to state 34
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 17
 
-    (10) bin_ops -> expression SUB expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (14) bin_ops -> expression SUB . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ADD             reduce using rule 10 (bin_ops -> expression SUB expression .)
-    SUB             reduce using rule 10 (bin_ops -> expression SUB expression .)
-    LET             reduce using rule 10 (bin_ops -> expression SUB expression .)
-    INT             reduce using rule 10 (bin_ops -> expression SUB expression .)
-    $end            reduce using rule 10 (bin_ops -> expression SUB expression .)
-    MUL             shift and go to state 13
-    DIV             shift and go to state 14
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! MUL             [ reduce using rule 10 (bin_ops -> expression SUB expression .) ]
-  ! DIV             [ reduce using rule 10 (bin_ops -> expression SUB expression .) ]
-  ! ADD             [ shift and go to state 11 ]
-  ! SUB             [ shift and go to state 12 ]
-
+    expression                     shift and go to state 35
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 18
 
-    (11) bin_ops -> expression MUL expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (15) bin_ops -> expression MUL . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ADD             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    SUB             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    MUL             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    DIV             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    LET             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    INT             reduce using rule 11 (bin_ops -> expression MUL expression .)
-    $end            reduce using rule 11 (bin_ops -> expression MUL expression .)
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! ADD             [ shift and go to state 11 ]
-  ! SUB             [ shift and go to state 12 ]
-  ! MUL             [ shift and go to state 13 ]
-  ! DIV             [ shift and go to state 14 ]
-
+    expression                     shift and go to state 36
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 19
 
-    (12) bin_ops -> expression DIV expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (16) bin_ops -> expression DIV . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ADD             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    SUB             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    MUL             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    DIV             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    LET             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    INT             reduce using rule 12 (bin_ops -> expression DIV expression .)
-    $end            reduce using rule 12 (bin_ops -> expression DIV expression .)
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-  ! ADD             [ shift and go to state 11 ]
-  ! SUB             [ shift and go to state 12 ]
-  ! MUL             [ shift and go to state 13 ]
-  ! DIV             [ shift and go to state 14 ]
-
+    expression                     shift and go to state 37
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 20
 
-    (14) statement -> LET ID COLON . type ASSIGN expression
-    (13) type -> . INT_TYPE
+    (17) bin_ops -> expression MOD . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    INT_TYPE        shift and go to state 22
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-    type                           shift and go to state 21
+    expression                     shift and go to state 38
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 21
 
-    (14) statement -> LET ID COLON type . ASSIGN expression
+    (18) bin_ops -> expression POW . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ASSIGN          shift and go to state 23
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
+    expression                     shift and go to state 39
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 22
 
-    (13) type -> INT_TYPE .
+    (19) bin_ops -> expression GT . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    ASSIGN          reduce using rule 13 (type -> INT_TYPE .)
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
+    expression                     shift and go to state 40
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 23
 
-    (14) statement -> LET ID COLON type ASSIGN . expression
+    (20) bin_ops -> expression LT . expression
     (6) expression -> . variable
-    (7) expression -> . bin_ops
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
     (8) variable -> . INT
-    (9) bin_ops -> . expression ADD expression
-    (10) bin_ops -> . expression SUB expression
-    (11) bin_ops -> . expression MUL expression
-    (12) bin_ops -> . expression DIV expression
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    INT             shift and go to state 9
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
 
-    expression                     shift and go to state 24
-    variable                       shift and go to state 7
-    bin_ops                        shift and go to state 8
+    expression                     shift and go to state 41
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
 
 state 24
 
-    (14) statement -> LET ID COLON type ASSIGN expression .
-    (9) bin_ops -> expression . ADD expression
-    (10) bin_ops -> expression . SUB expression
-    (11) bin_ops -> expression . MUL expression
-    (12) bin_ops -> expression . DIV expression
+    (21) bin_ops -> expression GE . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
 
-    LET             reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
-    INT             reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
-    $end            reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
-    ADD             shift and go to state 11
-    SUB             shift and go to state 12
-    MUL             shift and go to state 13
-    DIV             shift and go to state 14
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 42
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 25
+
+    (22) bin_ops -> expression LE . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 43
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 26
+
+    (23) bin_ops -> expression EQ . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 44
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 27
+
+    (24) bin_ops -> expression NE . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 45
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 28
+
+    (29) optional_semicolon -> SEMICOLON .
+
+    LET             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    NOT             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    SUB             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    INT             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    STR             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    ID              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    $end            reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    ADD             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    MUL             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    DIV             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    MOD             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    POW             reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    GT              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    LT              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    GE              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    LE              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    EQ              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    NE              reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+    SEMICOLON       reduce using rule 29 (optional_semicolon -> SEMICOLON .)
+
+
+state 29
+
+    (30) optional_semicolon -> empty .
+
+    LET             reduce using rule 30 (optional_semicolon -> empty .)
+    NOT             reduce using rule 30 (optional_semicolon -> empty .)
+    SUB             reduce using rule 30 (optional_semicolon -> empty .)
+    INT             reduce using rule 30 (optional_semicolon -> empty .)
+    STR             reduce using rule 30 (optional_semicolon -> empty .)
+    ID              reduce using rule 30 (optional_semicolon -> empty .)
+    $end            reduce using rule 30 (optional_semicolon -> empty .)
+    ADD             reduce using rule 30 (optional_semicolon -> empty .)
+    MUL             reduce using rule 30 (optional_semicolon -> empty .)
+    DIV             reduce using rule 30 (optional_semicolon -> empty .)
+    MOD             reduce using rule 30 (optional_semicolon -> empty .)
+    POW             reduce using rule 30 (optional_semicolon -> empty .)
+    GT              reduce using rule 30 (optional_semicolon -> empty .)
+    LT              reduce using rule 30 (optional_semicolon -> empty .)
+    GE              reduce using rule 30 (optional_semicolon -> empty .)
+    LE              reduce using rule 30 (optional_semicolon -> empty .)
+    EQ              reduce using rule 30 (optional_semicolon -> empty .)
+    NE              reduce using rule 30 (optional_semicolon -> empty .)
+    SEMICOLON       reduce using rule 30 (optional_semicolon -> empty .)
+
+
+state 30
+
+    (27) statement -> LET ID . COLON type ASSIGN expression optional_semicolon
+
+    COLON           shift and go to state 46
+
+
+state 31
+
+    (7) expression -> bin_ops optional_semicolon .
+
+    ADD             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    SUB             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    MUL             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    DIV             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    MOD             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    POW             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    GT              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    LT              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    GE              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    LE              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    EQ              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    NE              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    SEMICOLON       reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    LET             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    NOT             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    INT             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    STR             reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    ID              reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+    $end            reduce using rule 7 (expression -> bin_ops optional_semicolon .)
+
+
+state 32
+
+    (11) expression -> NOT expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    ADD             reduce using rule 11 (expression -> NOT expression .)
+    SUB             reduce using rule 11 (expression -> NOT expression .)
+    MUL             reduce using rule 11 (expression -> NOT expression .)
+    DIV             reduce using rule 11 (expression -> NOT expression .)
+    MOD             reduce using rule 11 (expression -> NOT expression .)
+    POW             reduce using rule 11 (expression -> NOT expression .)
+    GT              reduce using rule 11 (expression -> NOT expression .)
+    LT              reduce using rule 11 (expression -> NOT expression .)
+    GE              reduce using rule 11 (expression -> NOT expression .)
+    LE              reduce using rule 11 (expression -> NOT expression .)
+    EQ              reduce using rule 11 (expression -> NOT expression .)
+    NE              reduce using rule 11 (expression -> NOT expression .)
+    SEMICOLON       reduce using rule 11 (expression -> NOT expression .)
+    LET             reduce using rule 11 (expression -> NOT expression .)
+    NOT             reduce using rule 11 (expression -> NOT expression .)
+    INT             reduce using rule 11 (expression -> NOT expression .)
+    STR             reduce using rule 11 (expression -> NOT expression .)
+    ID              reduce using rule 11 (expression -> NOT expression .)
+    $end            reduce using rule 11 (expression -> NOT expression .)
+
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! POW             [ shift and go to state 21 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 33
+
+    (12) expression -> SUB expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    ADD             reduce using rule 12 (expression -> SUB expression .)
+    SUB             reduce using rule 12 (expression -> SUB expression .)
+    MUL             reduce using rule 12 (expression -> SUB expression .)
+    DIV             reduce using rule 12 (expression -> SUB expression .)
+    MOD             reduce using rule 12 (expression -> SUB expression .)
+    POW             reduce using rule 12 (expression -> SUB expression .)
+    GT              reduce using rule 12 (expression -> SUB expression .)
+    LT              reduce using rule 12 (expression -> SUB expression .)
+    GE              reduce using rule 12 (expression -> SUB expression .)
+    LE              reduce using rule 12 (expression -> SUB expression .)
+    EQ              reduce using rule 12 (expression -> SUB expression .)
+    NE              reduce using rule 12 (expression -> SUB expression .)
+    SEMICOLON       reduce using rule 12 (expression -> SUB expression .)
+    LET             reduce using rule 12 (expression -> SUB expression .)
+    NOT             reduce using rule 12 (expression -> SUB expression .)
+    INT             reduce using rule 12 (expression -> SUB expression .)
+    STR             reduce using rule 12 (expression -> SUB expression .)
+    ID              reduce using rule 12 (expression -> SUB expression .)
+    $end            reduce using rule 12 (expression -> SUB expression .)
+
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! POW             [ shift and go to state 21 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 34
+
+    (13) bin_ops -> expression ADD expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 13 (bin_ops -> expression ADD expression .)
+    ADD             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    SUB             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    GT              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    LT              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    GE              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    LE              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    EQ              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    NE              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    LET             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    NOT             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    INT             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    STR             reduce using rule 13 (bin_ops -> expression ADD expression .)
+    ID              reduce using rule 13 (bin_ops -> expression ADD expression .)
+    $end            reduce using rule 13 (bin_ops -> expression ADD expression .)
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! MUL             [ reduce using rule 13 (bin_ops -> expression ADD expression .) ]
+  ! DIV             [ reduce using rule 13 (bin_ops -> expression ADD expression .) ]
+  ! MOD             [ reduce using rule 13 (bin_ops -> expression ADD expression .) ]
+  ! POW             [ reduce using rule 13 (bin_ops -> expression ADD expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 35
+
+    (14) bin_ops -> expression SUB expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 14 (bin_ops -> expression SUB expression .)
+    ADD             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    SUB             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    GT              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    LT              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    GE              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    LE              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    EQ              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    NE              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    LET             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    NOT             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    INT             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    STR             reduce using rule 14 (bin_ops -> expression SUB expression .)
+    ID              reduce using rule 14 (bin_ops -> expression SUB expression .)
+    $end            reduce using rule 14 (bin_ops -> expression SUB expression .)
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! MUL             [ reduce using rule 14 (bin_ops -> expression SUB expression .) ]
+  ! DIV             [ reduce using rule 14 (bin_ops -> expression SUB expression .) ]
+  ! MOD             [ reduce using rule 14 (bin_ops -> expression SUB expression .) ]
+  ! POW             [ reduce using rule 14 (bin_ops -> expression SUB expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 36
+
+    (15) bin_ops -> expression MUL expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 15 (bin_ops -> expression MUL expression .)
+    ADD             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    SUB             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    MUL             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    DIV             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    MOD             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    GT              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    LT              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    GE              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    LE              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    EQ              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    NE              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    LET             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    NOT             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    INT             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    STR             reduce using rule 15 (bin_ops -> expression MUL expression .)
+    ID              reduce using rule 15 (bin_ops -> expression MUL expression .)
+    $end            reduce using rule 15 (bin_ops -> expression MUL expression .)
+    POW             shift and go to state 21
+
+  ! POW             [ reduce using rule 15 (bin_ops -> expression MUL expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 37
+
+    (16) bin_ops -> expression DIV expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 16 (bin_ops -> expression DIV expression .)
+    ADD             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    SUB             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    MUL             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    DIV             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    MOD             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    GT              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    LT              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    GE              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    LE              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    EQ              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    NE              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    LET             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    NOT             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    INT             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    STR             reduce using rule 16 (bin_ops -> expression DIV expression .)
+    ID              reduce using rule 16 (bin_ops -> expression DIV expression .)
+    $end            reduce using rule 16 (bin_ops -> expression DIV expression .)
+    POW             shift and go to state 21
+
+  ! POW             [ reduce using rule 16 (bin_ops -> expression DIV expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 38
+
+    (17) bin_ops -> expression MOD expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 17 (bin_ops -> expression MOD expression .)
+    ADD             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    SUB             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    MUL             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    DIV             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    MOD             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    GT              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    LT              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    GE              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    LE              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    EQ              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    NE              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    LET             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    NOT             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    INT             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    STR             reduce using rule 17 (bin_ops -> expression MOD expression .)
+    ID              reduce using rule 17 (bin_ops -> expression MOD expression .)
+    $end            reduce using rule 17 (bin_ops -> expression MOD expression .)
+    POW             shift and go to state 21
+
+  ! POW             [ reduce using rule 17 (bin_ops -> expression MOD expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 39
+
+    (18) bin_ops -> expression POW expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 18 (bin_ops -> expression POW expression .)
+    ADD             reduce using rule 18 (bin_ops -> expression POW expression .)
+    SUB             reduce using rule 18 (bin_ops -> expression POW expression .)
+    MUL             reduce using rule 18 (bin_ops -> expression POW expression .)
+    DIV             reduce using rule 18 (bin_ops -> expression POW expression .)
+    MOD             reduce using rule 18 (bin_ops -> expression POW expression .)
+    GT              reduce using rule 18 (bin_ops -> expression POW expression .)
+    LT              reduce using rule 18 (bin_ops -> expression POW expression .)
+    GE              reduce using rule 18 (bin_ops -> expression POW expression .)
+    LE              reduce using rule 18 (bin_ops -> expression POW expression .)
+    EQ              reduce using rule 18 (bin_ops -> expression POW expression .)
+    NE              reduce using rule 18 (bin_ops -> expression POW expression .)
+    LET             reduce using rule 18 (bin_ops -> expression POW expression .)
+    NOT             reduce using rule 18 (bin_ops -> expression POW expression .)
+    INT             reduce using rule 18 (bin_ops -> expression POW expression .)
+    STR             reduce using rule 18 (bin_ops -> expression POW expression .)
+    ID              reduce using rule 18 (bin_ops -> expression POW expression .)
+    $end            reduce using rule 18 (bin_ops -> expression POW expression .)
+    POW             shift and go to state 21
+
+  ! POW             [ reduce using rule 18 (bin_ops -> expression POW expression .) ]
+  ! ADD             [ shift and go to state 16 ]
+  ! SUB             [ shift and go to state 17 ]
+  ! MUL             [ shift and go to state 18 ]
+  ! DIV             [ shift and go to state 19 ]
+  ! MOD             [ shift and go to state 20 ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 40
+
+    (19) bin_ops -> expression GT expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 19 (bin_ops -> expression GT expression .)
+    GT              reduce using rule 19 (bin_ops -> expression GT expression .)
+    LT              reduce using rule 19 (bin_ops -> expression GT expression .)
+    GE              reduce using rule 19 (bin_ops -> expression GT expression .)
+    LE              reduce using rule 19 (bin_ops -> expression GT expression .)
+    EQ              reduce using rule 19 (bin_ops -> expression GT expression .)
+    NE              reduce using rule 19 (bin_ops -> expression GT expression .)
+    LET             reduce using rule 19 (bin_ops -> expression GT expression .)
+    NOT             reduce using rule 19 (bin_ops -> expression GT expression .)
+    INT             reduce using rule 19 (bin_ops -> expression GT expression .)
+    STR             reduce using rule 19 (bin_ops -> expression GT expression .)
+    ID              reduce using rule 19 (bin_ops -> expression GT expression .)
+    $end            reduce using rule 19 (bin_ops -> expression GT expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! ADD             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! SUB             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! MUL             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! DIV             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! MOD             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! POW             [ reduce using rule 19 (bin_ops -> expression GT expression .) ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 41
+
+    (20) bin_ops -> expression LT expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 20 (bin_ops -> expression LT expression .)
+    GT              reduce using rule 20 (bin_ops -> expression LT expression .)
+    LT              reduce using rule 20 (bin_ops -> expression LT expression .)
+    GE              reduce using rule 20 (bin_ops -> expression LT expression .)
+    LE              reduce using rule 20 (bin_ops -> expression LT expression .)
+    EQ              reduce using rule 20 (bin_ops -> expression LT expression .)
+    NE              reduce using rule 20 (bin_ops -> expression LT expression .)
+    LET             reduce using rule 20 (bin_ops -> expression LT expression .)
+    NOT             reduce using rule 20 (bin_ops -> expression LT expression .)
+    INT             reduce using rule 20 (bin_ops -> expression LT expression .)
+    STR             reduce using rule 20 (bin_ops -> expression LT expression .)
+    ID              reduce using rule 20 (bin_ops -> expression LT expression .)
+    $end            reduce using rule 20 (bin_ops -> expression LT expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! ADD             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! SUB             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! MUL             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! DIV             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! MOD             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! POW             [ reduce using rule 20 (bin_ops -> expression LT expression .) ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 42
+
+    (21) bin_ops -> expression GE expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 21 (bin_ops -> expression GE expression .)
+    GT              reduce using rule 21 (bin_ops -> expression GE expression .)
+    LT              reduce using rule 21 (bin_ops -> expression GE expression .)
+    GE              reduce using rule 21 (bin_ops -> expression GE expression .)
+    LE              reduce using rule 21 (bin_ops -> expression GE expression .)
+    EQ              reduce using rule 21 (bin_ops -> expression GE expression .)
+    NE              reduce using rule 21 (bin_ops -> expression GE expression .)
+    LET             reduce using rule 21 (bin_ops -> expression GE expression .)
+    NOT             reduce using rule 21 (bin_ops -> expression GE expression .)
+    INT             reduce using rule 21 (bin_ops -> expression GE expression .)
+    STR             reduce using rule 21 (bin_ops -> expression GE expression .)
+    ID              reduce using rule 21 (bin_ops -> expression GE expression .)
+    $end            reduce using rule 21 (bin_ops -> expression GE expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! ADD             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! SUB             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! MUL             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! DIV             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! MOD             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! POW             [ reduce using rule 21 (bin_ops -> expression GE expression .) ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 43
+
+    (22) bin_ops -> expression LE expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 22 (bin_ops -> expression LE expression .)
+    GT              reduce using rule 22 (bin_ops -> expression LE expression .)
+    LT              reduce using rule 22 (bin_ops -> expression LE expression .)
+    GE              reduce using rule 22 (bin_ops -> expression LE expression .)
+    LE              reduce using rule 22 (bin_ops -> expression LE expression .)
+    EQ              reduce using rule 22 (bin_ops -> expression LE expression .)
+    NE              reduce using rule 22 (bin_ops -> expression LE expression .)
+    LET             reduce using rule 22 (bin_ops -> expression LE expression .)
+    NOT             reduce using rule 22 (bin_ops -> expression LE expression .)
+    INT             reduce using rule 22 (bin_ops -> expression LE expression .)
+    STR             reduce using rule 22 (bin_ops -> expression LE expression .)
+    ID              reduce using rule 22 (bin_ops -> expression LE expression .)
+    $end            reduce using rule 22 (bin_ops -> expression LE expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+
+  ! ADD             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! SUB             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! MUL             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! DIV             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! MOD             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! POW             [ reduce using rule 22 (bin_ops -> expression LE expression .) ]
+  ! GT              [ shift and go to state 22 ]
+  ! LT              [ shift and go to state 23 ]
+  ! GE              [ shift and go to state 24 ]
+  ! LE              [ shift and go to state 25 ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 44
+
+    (23) bin_ops -> expression EQ expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 23 (bin_ops -> expression EQ expression .)
+    EQ              reduce using rule 23 (bin_ops -> expression EQ expression .)
+    NE              reduce using rule 23 (bin_ops -> expression EQ expression .)
+    LET             reduce using rule 23 (bin_ops -> expression EQ expression .)
+    NOT             reduce using rule 23 (bin_ops -> expression EQ expression .)
+    INT             reduce using rule 23 (bin_ops -> expression EQ expression .)
+    STR             reduce using rule 23 (bin_ops -> expression EQ expression .)
+    ID              reduce using rule 23 (bin_ops -> expression EQ expression .)
+    $end            reduce using rule 23 (bin_ops -> expression EQ expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+    GT              shift and go to state 22
+    LT              shift and go to state 23
+    GE              shift and go to state 24
+    LE              shift and go to state 25
+
+  ! ADD             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! SUB             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! MUL             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! DIV             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! MOD             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! POW             [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! GT              [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! LT              [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! GE              [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! LE              [ reduce using rule 23 (bin_ops -> expression EQ expression .) ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 45
+
+    (24) bin_ops -> expression NE expression .
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+
+    SEMICOLON       reduce using rule 24 (bin_ops -> expression NE expression .)
+    EQ              reduce using rule 24 (bin_ops -> expression NE expression .)
+    NE              reduce using rule 24 (bin_ops -> expression NE expression .)
+    LET             reduce using rule 24 (bin_ops -> expression NE expression .)
+    NOT             reduce using rule 24 (bin_ops -> expression NE expression .)
+    INT             reduce using rule 24 (bin_ops -> expression NE expression .)
+    STR             reduce using rule 24 (bin_ops -> expression NE expression .)
+    ID              reduce using rule 24 (bin_ops -> expression NE expression .)
+    $end            reduce using rule 24 (bin_ops -> expression NE expression .)
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+    GT              shift and go to state 22
+    LT              shift and go to state 23
+    GE              shift and go to state 24
+    LE              shift and go to state 25
+
+  ! ADD             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! SUB             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! MUL             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! DIV             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! MOD             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! POW             [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! GT              [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! LT              [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! GE              [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! LE              [ reduce using rule 24 (bin_ops -> expression NE expression .) ]
+  ! EQ              [ shift and go to state 26 ]
+  ! NE              [ shift and go to state 27 ]
+
+
+state 46
+
+    (27) statement -> LET ID COLON . type ASSIGN expression optional_semicolon
+    (25) type -> . INT_TYPE
+    (26) type -> . STR_TYPE
+
+    INT_TYPE        shift and go to state 48
+    STR_TYPE        shift and go to state 49
+
+    type                           shift and go to state 47
+
+state 47
+
+    (27) statement -> LET ID COLON type . ASSIGN expression optional_semicolon
+
+    ASSIGN          shift and go to state 50
+
+
+state 48
+
+    (25) type -> INT_TYPE .
+
+    ASSIGN          reduce using rule 25 (type -> INT_TYPE .)
+
+
+state 49
+
+    (26) type -> STR_TYPE .
+
+    ASSIGN          reduce using rule 26 (type -> STR_TYPE .)
+
+
+state 50
+
+    (27) statement -> LET ID COLON type ASSIGN . expression optional_semicolon
+    (6) expression -> . variable
+    (7) expression -> . bin_ops optional_semicolon
+    (11) expression -> . NOT expression
+    (12) expression -> . SUB expression
+    (8) variable -> . INT
+    (9) variable -> . STR
+    (10) variable -> . ID
+    (13) bin_ops -> . expression ADD expression
+    (14) bin_ops -> . expression SUB expression
+    (15) bin_ops -> . expression MUL expression
+    (16) bin_ops -> . expression DIV expression
+    (17) bin_ops -> . expression MOD expression
+    (18) bin_ops -> . expression POW expression
+    (19) bin_ops -> . expression GT expression
+    (20) bin_ops -> . expression LT expression
+    (21) bin_ops -> . expression GE expression
+    (22) bin_ops -> . expression LE expression
+    (23) bin_ops -> . expression EQ expression
+    (24) bin_ops -> . expression NE expression
+
+    NOT             shift and go to state 10
+    SUB             shift and go to state 11
+    INT             shift and go to state 12
+    STR             shift and go to state 13
+    ID              shift and go to state 7
+
+    expression                     shift and go to state 51
+    variable                       shift and go to state 8
+    bin_ops                        shift and go to state 9
+
+state 51
+
+    (27) statement -> LET ID COLON type ASSIGN expression . optional_semicolon
+    (13) bin_ops -> expression . ADD expression
+    (14) bin_ops -> expression . SUB expression
+    (15) bin_ops -> expression . MUL expression
+    (16) bin_ops -> expression . DIV expression
+    (17) bin_ops -> expression . MOD expression
+    (18) bin_ops -> expression . POW expression
+    (19) bin_ops -> expression . GT expression
+    (20) bin_ops -> expression . LT expression
+    (21) bin_ops -> expression . GE expression
+    (22) bin_ops -> expression . LE expression
+    (23) bin_ops -> expression . EQ expression
+    (24) bin_ops -> expression . NE expression
+    (29) optional_semicolon -> . SEMICOLON
+    (30) optional_semicolon -> . empty
+    (28) empty -> .
+
+  ! shift/reduce conflict for SUB resolved as shift
+    ADD             shift and go to state 16
+    SUB             shift and go to state 17
+    MUL             shift and go to state 18
+    DIV             shift and go to state 19
+    MOD             shift and go to state 20
+    POW             shift and go to state 21
+    GT              shift and go to state 22
+    LT              shift and go to state 23
+    GE              shift and go to state 24
+    LE              shift and go to state 25
+    EQ              shift and go to state 26
+    NE              shift and go to state 27
+    SEMICOLON       shift and go to state 28
+    LET             reduce using rule 28 (empty -> .)
+    NOT             reduce using rule 28 (empty -> .)
+    INT             reduce using rule 28 (empty -> .)
+    STR             reduce using rule 28 (empty -> .)
+    ID              reduce using rule 28 (empty -> .)
+    $end            reduce using rule 28 (empty -> .)
+
+  ! SUB             [ reduce using rule 28 (empty -> .) ]
+
+    optional_semicolon             shift and go to state 52
+    empty                          shift and go to state 29
+
+state 52
+
+    (27) statement -> LET ID COLON type ASSIGN expression optional_semicolon .
+
+    LET             reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    NOT             reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    SUB             reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    INT             reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    STR             reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    ID              reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
+    $end            reduce using rule 27 (statement -> LET ID COLON type ASSIGN expression optional_semicolon .)
 
 WARNING: 
 WARNING: Conflicts:
 WARNING: 
 WARNING: shift/reduce conflict for LET in state 0 resolved as shift
+WARNING: shift/reduce conflict for NOT in state 0 resolved as shift
+WARNING: shift/reduce conflict for SUB in state 0 resolved as shift
 WARNING: shift/reduce conflict for INT in state 0 resolved as shift
+WARNING: shift/reduce conflict for STR in state 0 resolved as shift
+WARNING: shift/reduce conflict for ID in state 0 resolved as shift
 WARNING: shift/reduce conflict for LET in state 2 resolved as shift
+WARNING: shift/reduce conflict for NOT in state 2 resolved as shift
+WARNING: shift/reduce conflict for SUB in state 2 resolved as shift
 WARNING: shift/reduce conflict for INT in state 2 resolved as shift
+WARNING: shift/reduce conflict for STR in state 2 resolved as shift
+WARNING: shift/reduce conflict for ID in state 2 resolved as shift
+WARNING: shift/reduce conflict for SUB in state 4 resolved as shift
+WARNING: shift/reduce conflict for SEMICOLON in state 9 resolved as shift
+WARNING: shift/reduce conflict for SUB in state 51 resolved as shift
 WARNING: reduce/reduce conflict in state 2 resolved using rule (program -> statements)
 WARNING: rejected rule (empty -> <empty>) in state 2

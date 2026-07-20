@@ -4,12 +4,28 @@ tokens = (
     # Type and Variable
     'INT',
     'INT_TYPE',
+    'STR',
+    'STR_TYPE',
     
-    # Operators
+    # Arithmetic Operators
     'ADD',
     'SUB',
     'DIV',
     'MUL',
+    'MOD',
+    'POW',
+    
+    # Compare Operators
+    'GT',
+    'LT',
+    'LE',
+    'GE',
+    'NE',
+    'EQ',
+    
+    # Unary and Not Operators
+    'Uminus',
+    'NOT',
     
     # Delimeters
     'LPAREN',
@@ -20,23 +36,39 @@ tokens = (
     # Keywords
     'ASSIGN',
     'ID',
-    'LET'
+    'LET',
 )
 reserved_keys = {
     'int' : 'INT_TYPE',
+    'str' : 'STR_TYPE',
     'let' : 'LET',
     
 }
 t_ASSIGN = r'\='
 t_ADD = r'\+'
-t_SUB = r'\-'
-t_DIV = r'\/'
+t_SUB = r'-'
+t_DIV = r'/'
 t_MUL = r'\*'
+t_POW = r'\*\*'
+t_MOD = r'%'
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
-t_SEMICOLON = r'\;'
+t_SEMICOLON = r';'
 t_ignore = ' \t'
-t_COLON = r'\:'
+t_COLON = r':'
+t_GT = r'>'
+t_LT = r'<'
+t_LE = r'<='
+t_GE = r'>='
+t_NE = r'!='
+t_EQ = r'=='   
+t_NOT = r'!'
+
+
+def t_STR(t):
+    r'\"[^"\n]*\"|\'[^\'\n]*\''
+    t.value = t.value[1:-1]
+    return t
 
 def t_INT(t):
     r'-?[0-9]+'

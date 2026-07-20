@@ -6,9 +6,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'leftADDSUBleftDIVMULADD ASSIGN COLON DIV ID INT INT_TYPE LET LPAREN MUL RPAREN SEMICOLON SUBprogram : statementsstatement : expressionstatements : statement\n| statements statementstatement : emptyexpression : variableexpression : bin_opsvariable : INTbin_ops    : expression ADD expression\n| expression SUB expression\n| expression MUL expression\n| expression DIV expressiontype : INT_TYPEstatement : LET ID COLON type ASSIGN expressionempty : optional_semicolon : SEMICOLON\n| empty'
+_lr_signature = 'leftEQNEleftLTGTLEGEleftADDSUBleftDIVMULMODrightPOWrightNOTrightLPARENrightUMINUSADD ASSIGN COLON DIV EQ GE GT ID INT INT_TYPE LE LET LPAREN LT MOD MUL NE NOT POW RPAREN SEMICOLON STR STR_TYPE SUB Uminusprogram : statementsstatement : expression optional_semicolonstatements : statement\n| statements statementstatement : emptyexpression : variableexpression : bin_ops optional_semicolonvariable : INT\n| STR\n| IDexpression : NOT expression\n| SUB expression %prec UMINUSbin_ops    : expression ADD expression\n| expression SUB expression\n| expression MUL expression\n| expression DIV expression\n| expression MOD expression\n| expression POW expression\n| expression GT expression\n| expression LT expression\n| expression GE expression\n| expression LE expression\n| expression EQ expression\n| expression NE expressiontype : INT_TYPE\n| STR_TYPEstatement : LET ID COLON type ASSIGN expression optional_semicolonempty : optional_semicolon : SEMICOLON\n| empty'
     
-_lr_action_items = {'LET':([0,2,3,4,5,7,8,9,10,16,17,18,19,24,],[6,6,-3,-2,-5,-6,-7,-8,-4,-9,-10,-11,-12,-14,]),'INT':([0,2,3,4,5,7,8,9,10,11,12,13,14,16,17,18,19,23,24,],[9,9,-3,-2,-5,-6,-7,-8,-4,9,9,9,9,-9,-10,-11,-12,9,-14,]),'$end':([0,1,2,3,4,5,7,8,9,10,16,17,18,19,24,],[-15,0,-1,-3,-2,-5,-6,-7,-8,-4,-9,-10,-11,-12,-14,]),'ADD':([4,7,8,9,16,17,18,19,24,],[11,-6,-7,-8,-9,-10,-11,-12,11,]),'SUB':([4,7,8,9,16,17,18,19,24,],[12,-6,-7,-8,-9,-10,-11,-12,12,]),'MUL':([4,7,8,9,16,17,18,19,24,],[13,-6,-7,-8,13,13,-11,-12,13,]),'DIV':([4,7,8,9,16,17,18,19,24,],[14,-6,-7,-8,14,14,-11,-12,14,]),'ID':([6,],[15,]),'COLON':([15,],[20,]),'INT_TYPE':([20,],[22,]),'ASSIGN':([21,22,],[23,-13,]),}
+_lr_action_items = {'LET':([0,2,3,4,5,7,8,9,12,13,14,15,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,52,],[6,6,-3,-28,-5,-10,-6,-28,-8,-9,-4,-2,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,-28,-27,]),'NOT':([0,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,50,51,52,],[10,10,-3,-28,-5,-10,-6,-28,10,10,-8,-9,-4,-2,10,10,10,10,10,10,10,10,10,10,10,10,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,10,-28,-27,]),'SUB':([0,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,50,51,52,],[11,11,-3,17,-5,-10,-6,-28,11,11,-8,-9,-4,-2,11,11,11,11,11,11,11,11,11,11,11,11,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,17,17,17,17,17,17,11,17,-27,]),'INT':([0,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,50,51,52,],[12,12,-3,-28,-5,-10,-6,-28,12,12,-8,-9,-4,-2,12,12,12,12,12,12,12,12,12,12,12,12,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,12,-28,-27,]),'STR':([0,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,50,51,52,],[13,13,-3,-28,-5,-10,-6,-28,13,13,-8,-9,-4,-2,13,13,13,13,13,13,13,13,13,13,13,13,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,13,-28,-27,]),'ID':([0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,50,51,52,],[7,7,-3,-28,-5,30,-10,-6,-28,7,7,-8,-9,-4,-2,7,7,7,7,7,7,7,7,7,7,7,7,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,7,-28,-27,]),'$end':([0,1,2,3,4,5,7,8,9,12,13,14,15,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,52,],[-28,0,-1,-3,-28,-5,-10,-6,-28,-8,-9,-4,-2,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,-28,-27,]),'ADD':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[16,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,16,16,16,16,16,16,16,]),'MUL':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[18,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,18,18,-15,-16,-17,-18,18,18,18,18,18,18,18,]),'DIV':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[19,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,19,19,-15,-16,-17,-18,19,19,19,19,19,19,19,]),'MOD':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[20,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,20,20,-15,-16,-17,-18,20,20,20,20,20,20,20,]),'POW':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[21,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,21,21,21,21,21,21,21,21,21,21,21,21,21,]),'GT':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[22,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,22,22,22,]),'LT':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[23,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,23,23,23,]),'GE':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[24,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,24,24,24,]),'LE':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[25,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,25,25,25,]),'EQ':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[26,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,26,]),'NE':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[27,-10,-6,-28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,27,]),'SEMICOLON':([4,7,8,9,12,13,28,29,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,],[28,-10,-6,28,-8,-9,-29,-30,-7,-11,-12,-13,-14,-15,-16,-17,-18,-19,-20,-21,-22,-23,-24,28,]),'COLON':([30,],[46,]),'INT_TYPE':([46,],[48,]),'STR_TYPE':([46,],[49,]),'ASSIGN':([47,48,49,],[50,-25,-26,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -17,7 +17,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'program':([0,],[1,]),'statements':([0,],[2,]),'statement':([0,2,],[3,10,]),'expression':([0,2,11,12,13,14,23,],[4,4,16,17,18,19,24,]),'empty':([0,2,],[5,5,]),'variable':([0,2,11,12,13,14,23,],[7,7,7,7,7,7,7,]),'bin_ops':([0,2,11,12,13,14,23,],[8,8,8,8,8,8,8,]),'type':([20,],[21,]),}
+_lr_goto_items = {'program':([0,],[1,]),'statements':([0,],[2,]),'statement':([0,2,],[3,14,]),'expression':([0,2,10,11,16,17,18,19,20,21,22,23,24,25,26,27,50,],[4,4,32,33,34,35,36,37,38,39,40,41,42,43,44,45,51,]),'empty':([0,2,4,9,51,],[5,5,29,29,29,]),'variable':([0,2,10,11,16,17,18,19,20,21,22,23,24,25,26,27,50,],[8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,]),'bin_ops':([0,2,10,11,16,17,18,19,20,21,22,23,24,25,26,27,50,],[9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,]),'optional_semicolon':([4,9,51,],[15,31,52,]),'type':([46,],[47,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -27,21 +27,34 @@ for _k, _v in _lr_goto_items.items():
 del _lr_goto_items
 _lr_productions = [
   ("S' -> program","S'",1,None,None,None),
-  ('program -> statements','program',1,'p_program','parse.py',30),
-  ('statement -> expression','statement',1,'p_statement','parse.py',34),
-  ('statements -> statement','statements',1,'p_statements','parse.py',38),
-  ('statements -> statements statement','statements',2,'p_statements','parse.py',39),
-  ('statement -> empty','statement',1,'p_statement_empty','parse.py',46),
-  ('expression -> variable','expression',1,'p_expression_variable','parse.py',52),
-  ('expression -> bin_ops','expression',1,'p_expression_binops','parse.py',56),
-  ('variable -> INT','variable',1,'p_variable','parse.py',62),
-  ('bin_ops -> expression ADD expression','bin_ops',3,'p_binops_expr','parse.py',70),
-  ('bin_ops -> expression SUB expression','bin_ops',3,'p_binops_expr','parse.py',71),
-  ('bin_ops -> expression MUL expression','bin_ops',3,'p_binops_expr','parse.py',72),
-  ('bin_ops -> expression DIV expression','bin_ops',3,'p_binops_expr','parse.py',73),
-  ('type -> INT_TYPE','type',1,'p_type','parse.py',79),
-  ('statement -> LET ID COLON type ASSIGN expression','statement',6,'p_assign_stmt','parse.py',85),
-  ('empty -> <empty>','empty',0,'p_empty','parse.py',91),
-  ('optional_semicolon -> SEMICOLON','optional_semicolon',1,'p_optional_semicolon','parse.py',95),
-  ('optional_semicolon -> empty','optional_semicolon',1,'p_optional_semicolon','parse.py',96),
+  ('program -> statements','program',1,'p_program','parse.py',52),
+  ('statement -> expression optional_semicolon','statement',2,'p_statement','parse.py',56),
+  ('statements -> statement','statements',1,'p_statements','parse.py',60),
+  ('statements -> statements statement','statements',2,'p_statements','parse.py',61),
+  ('statement -> empty','statement',1,'p_statement_empty','parse.py',68),
+  ('expression -> variable','expression',1,'p_expression_variable','parse.py',74),
+  ('expression -> bin_ops optional_semicolon','expression',2,'p_expression_binops','parse.py',78),
+  ('variable -> INT','variable',1,'p_variable','parse.py',84),
+  ('variable -> STR','variable',1,'p_variable','parse.py',85),
+  ('variable -> ID','variable',1,'p_variable','parse.py',86),
+  ('expression -> NOT expression','expression',2,'p_single_ops_expr','parse.py',97),
+  ('expression -> SUB expression','expression',2,'p_single_ops_expr','parse.py',98),
+  ('bin_ops -> expression ADD expression','bin_ops',3,'p_binops_expr','parse.py',104),
+  ('bin_ops -> expression SUB expression','bin_ops',3,'p_binops_expr','parse.py',105),
+  ('bin_ops -> expression MUL expression','bin_ops',3,'p_binops_expr','parse.py',106),
+  ('bin_ops -> expression DIV expression','bin_ops',3,'p_binops_expr','parse.py',107),
+  ('bin_ops -> expression MOD expression','bin_ops',3,'p_binops_expr','parse.py',108),
+  ('bin_ops -> expression POW expression','bin_ops',3,'p_binops_expr','parse.py',109),
+  ('bin_ops -> expression GT expression','bin_ops',3,'p_binops_expr','parse.py',110),
+  ('bin_ops -> expression LT expression','bin_ops',3,'p_binops_expr','parse.py',111),
+  ('bin_ops -> expression GE expression','bin_ops',3,'p_binops_expr','parse.py',112),
+  ('bin_ops -> expression LE expression','bin_ops',3,'p_binops_expr','parse.py',113),
+  ('bin_ops -> expression EQ expression','bin_ops',3,'p_binops_expr','parse.py',114),
+  ('bin_ops -> expression NE expression','bin_ops',3,'p_binops_expr','parse.py',115),
+  ('type -> INT_TYPE','type',1,'p_type','parse.py',121),
+  ('type -> STR_TYPE','type',1,'p_type','parse.py',122),
+  ('statement -> LET ID COLON type ASSIGN expression optional_semicolon','statement',7,'p_assign_stmt','parse.py',128),
+  ('empty -> <empty>','empty',0,'p_empty','parse.py',134),
+  ('optional_semicolon -> SEMICOLON','optional_semicolon',1,'p_optional_semicolon','parse.py',138),
+  ('optional_semicolon -> empty','optional_semicolon',1,'p_optional_semicolon','parse.py',139),
 ]
