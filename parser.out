@@ -1,0 +1,451 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    LPAREN
+    RPAREN
+
+Grammar
+
+Rule 0     S' -> program
+Rule 1     program -> statements
+Rule 2     statement -> expression
+Rule 3     statements -> statement
+Rule 4     statements -> statements statement
+Rule 5     statement -> empty
+Rule 6     expression -> variable
+Rule 7     expression -> bin_ops
+Rule 8     variable -> INT
+Rule 9     bin_ops -> expression ADD expression
+Rule 10    bin_ops -> expression SUB expression
+Rule 11    bin_ops -> expression MUL expression
+Rule 12    bin_ops -> expression DIV expression
+Rule 13    type -> INT_TYPE
+Rule 14    statement -> LET ID COLON type ASSIGN expression
+Rule 15    empty -> <empty>
+Rule 16    optional_semicolon -> SEMICOLON
+Rule 17    optional_semicolon -> empty
+
+Terminals, with rules where they appear
+
+ADD                  : 9
+ASSIGN               : 14
+COLON                : 14
+DIV                  : 12
+ID                   : 14
+INT                  : 8
+INT_TYPE             : 13
+LET                  : 14
+LPAREN               : 
+MUL                  : 11
+RPAREN               : 
+SEMICOLON            : 16
+SUB                  : 10
+error                : 
+
+Nonterminals, with rules where they appear
+
+bin_ops              : 7
+empty                : 5 17
+expression           : 2 9 9 10 10 11 11 12 12 14
+optional_semicolon   : 
+program              : 0
+statement            : 3 4
+statements           : 1 4
+type                 : 14
+variable             : 6
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . program
+    (1) program -> . statements
+    (3) statements -> . statement
+    (4) statements -> . statements statement
+    (2) statement -> . expression
+    (5) statement -> . empty
+    (14) statement -> . LET ID COLON type ASSIGN expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (15) empty -> .
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+  ! shift/reduce conflict for LET resolved as shift
+  ! shift/reduce conflict for INT resolved as shift
+    LET             shift and go to state 6
+    $end            reduce using rule 15 (empty -> .)
+    INT             shift and go to state 9
+
+  ! LET             [ reduce using rule 15 (empty -> .) ]
+  ! INT             [ reduce using rule 15 (empty -> .) ]
+
+    program                        shift and go to state 1
+    statements                     shift and go to state 2
+    statement                      shift and go to state 3
+    expression                     shift and go to state 4
+    empty                          shift and go to state 5
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 1
+
+    (0) S' -> program .
+
+
+
+state 2
+
+    (1) program -> statements .
+    (4) statements -> statements . statement
+    (2) statement -> . expression
+    (5) statement -> . empty
+    (14) statement -> . LET ID COLON type ASSIGN expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (15) empty -> .
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+  ! shift/reduce conflict for LET resolved as shift
+  ! reduce/reduce conflict for $end resolved using rule 1 (program -> statements .)
+  ! shift/reduce conflict for INT resolved as shift
+    $end            reduce using rule 1 (program -> statements .)
+    LET             shift and go to state 6
+    INT             shift and go to state 9
+
+  ! LET             [ reduce using rule 15 (empty -> .) ]
+  ! INT             [ reduce using rule 15 (empty -> .) ]
+  ! $end            [ reduce using rule 15 (empty -> .) ]
+
+    statement                      shift and go to state 10
+    expression                     shift and go to state 4
+    empty                          shift and go to state 5
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 3
+
+    (3) statements -> statement .
+
+    LET             reduce using rule 3 (statements -> statement .)
+    INT             reduce using rule 3 (statements -> statement .)
+    $end            reduce using rule 3 (statements -> statement .)
+
+
+state 4
+
+    (2) statement -> expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    LET             reduce using rule 2 (statement -> expression .)
+    INT             reduce using rule 2 (statement -> expression .)
+    $end            reduce using rule 2 (statement -> expression .)
+    ADD             shift and go to state 11
+    SUB             shift and go to state 12
+    MUL             shift and go to state 13
+    DIV             shift and go to state 14
+
+
+state 5
+
+    (5) statement -> empty .
+
+    LET             reduce using rule 5 (statement -> empty .)
+    INT             reduce using rule 5 (statement -> empty .)
+    $end            reduce using rule 5 (statement -> empty .)
+
+
+state 6
+
+    (14) statement -> LET . ID COLON type ASSIGN expression
+
+    ID              shift and go to state 15
+
+
+state 7
+
+    (6) expression -> variable .
+
+    ADD             reduce using rule 6 (expression -> variable .)
+    SUB             reduce using rule 6 (expression -> variable .)
+    MUL             reduce using rule 6 (expression -> variable .)
+    DIV             reduce using rule 6 (expression -> variable .)
+    LET             reduce using rule 6 (expression -> variable .)
+    INT             reduce using rule 6 (expression -> variable .)
+    $end            reduce using rule 6 (expression -> variable .)
+
+
+state 8
+
+    (7) expression -> bin_ops .
+
+    ADD             reduce using rule 7 (expression -> bin_ops .)
+    SUB             reduce using rule 7 (expression -> bin_ops .)
+    MUL             reduce using rule 7 (expression -> bin_ops .)
+    DIV             reduce using rule 7 (expression -> bin_ops .)
+    LET             reduce using rule 7 (expression -> bin_ops .)
+    INT             reduce using rule 7 (expression -> bin_ops .)
+    $end            reduce using rule 7 (expression -> bin_ops .)
+
+
+state 9
+
+    (8) variable -> INT .
+
+    ADD             reduce using rule 8 (variable -> INT .)
+    SUB             reduce using rule 8 (variable -> INT .)
+    MUL             reduce using rule 8 (variable -> INT .)
+    DIV             reduce using rule 8 (variable -> INT .)
+    LET             reduce using rule 8 (variable -> INT .)
+    INT             reduce using rule 8 (variable -> INT .)
+    $end            reduce using rule 8 (variable -> INT .)
+
+
+state 10
+
+    (4) statements -> statements statement .
+
+    LET             reduce using rule 4 (statements -> statements statement .)
+    INT             reduce using rule 4 (statements -> statements statement .)
+    $end            reduce using rule 4 (statements -> statements statement .)
+
+
+state 11
+
+    (9) bin_ops -> expression ADD . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+    INT             shift and go to state 9
+
+    expression                     shift and go to state 16
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 12
+
+    (10) bin_ops -> expression SUB . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+    INT             shift and go to state 9
+
+    expression                     shift and go to state 17
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 13
+
+    (11) bin_ops -> expression MUL . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+    INT             shift and go to state 9
+
+    expression                     shift and go to state 18
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 14
+
+    (12) bin_ops -> expression DIV . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+    INT             shift and go to state 9
+
+    expression                     shift and go to state 19
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 15
+
+    (14) statement -> LET ID . COLON type ASSIGN expression
+
+    COLON           shift and go to state 20
+
+
+state 16
+
+    (9) bin_ops -> expression ADD expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    ADD             reduce using rule 9 (bin_ops -> expression ADD expression .)
+    SUB             reduce using rule 9 (bin_ops -> expression ADD expression .)
+    LET             reduce using rule 9 (bin_ops -> expression ADD expression .)
+    INT             reduce using rule 9 (bin_ops -> expression ADD expression .)
+    $end            reduce using rule 9 (bin_ops -> expression ADD expression .)
+    MUL             shift and go to state 13
+    DIV             shift and go to state 14
+
+  ! MUL             [ reduce using rule 9 (bin_ops -> expression ADD expression .) ]
+  ! DIV             [ reduce using rule 9 (bin_ops -> expression ADD expression .) ]
+  ! ADD             [ shift and go to state 11 ]
+  ! SUB             [ shift and go to state 12 ]
+
+
+state 17
+
+    (10) bin_ops -> expression SUB expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    ADD             reduce using rule 10 (bin_ops -> expression SUB expression .)
+    SUB             reduce using rule 10 (bin_ops -> expression SUB expression .)
+    LET             reduce using rule 10 (bin_ops -> expression SUB expression .)
+    INT             reduce using rule 10 (bin_ops -> expression SUB expression .)
+    $end            reduce using rule 10 (bin_ops -> expression SUB expression .)
+    MUL             shift and go to state 13
+    DIV             shift and go to state 14
+
+  ! MUL             [ reduce using rule 10 (bin_ops -> expression SUB expression .) ]
+  ! DIV             [ reduce using rule 10 (bin_ops -> expression SUB expression .) ]
+  ! ADD             [ shift and go to state 11 ]
+  ! SUB             [ shift and go to state 12 ]
+
+
+state 18
+
+    (11) bin_ops -> expression MUL expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    ADD             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    SUB             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    MUL             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    DIV             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    LET             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    INT             reduce using rule 11 (bin_ops -> expression MUL expression .)
+    $end            reduce using rule 11 (bin_ops -> expression MUL expression .)
+
+  ! ADD             [ shift and go to state 11 ]
+  ! SUB             [ shift and go to state 12 ]
+  ! MUL             [ shift and go to state 13 ]
+  ! DIV             [ shift and go to state 14 ]
+
+
+state 19
+
+    (12) bin_ops -> expression DIV expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    ADD             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    SUB             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    MUL             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    DIV             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    LET             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    INT             reduce using rule 12 (bin_ops -> expression DIV expression .)
+    $end            reduce using rule 12 (bin_ops -> expression DIV expression .)
+
+  ! ADD             [ shift and go to state 11 ]
+  ! SUB             [ shift and go to state 12 ]
+  ! MUL             [ shift and go to state 13 ]
+  ! DIV             [ shift and go to state 14 ]
+
+
+state 20
+
+    (14) statement -> LET ID COLON . type ASSIGN expression
+    (13) type -> . INT_TYPE
+
+    INT_TYPE        shift and go to state 22
+
+    type                           shift and go to state 21
+
+state 21
+
+    (14) statement -> LET ID COLON type . ASSIGN expression
+
+    ASSIGN          shift and go to state 23
+
+
+state 22
+
+    (13) type -> INT_TYPE .
+
+    ASSIGN          reduce using rule 13 (type -> INT_TYPE .)
+
+
+state 23
+
+    (14) statement -> LET ID COLON type ASSIGN . expression
+    (6) expression -> . variable
+    (7) expression -> . bin_ops
+    (8) variable -> . INT
+    (9) bin_ops -> . expression ADD expression
+    (10) bin_ops -> . expression SUB expression
+    (11) bin_ops -> . expression MUL expression
+    (12) bin_ops -> . expression DIV expression
+
+    INT             shift and go to state 9
+
+    expression                     shift and go to state 24
+    variable                       shift and go to state 7
+    bin_ops                        shift and go to state 8
+
+state 24
+
+    (14) statement -> LET ID COLON type ASSIGN expression .
+    (9) bin_ops -> expression . ADD expression
+    (10) bin_ops -> expression . SUB expression
+    (11) bin_ops -> expression . MUL expression
+    (12) bin_ops -> expression . DIV expression
+
+    LET             reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
+    INT             reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
+    $end            reduce using rule 14 (statement -> LET ID COLON type ASSIGN expression .)
+    ADD             shift and go to state 11
+    SUB             shift and go to state 12
+    MUL             shift and go to state 13
+    DIV             shift and go to state 14
+
+WARNING: 
+WARNING: Conflicts:
+WARNING: 
+WARNING: shift/reduce conflict for LET in state 0 resolved as shift
+WARNING: shift/reduce conflict for INT in state 0 resolved as shift
+WARNING: shift/reduce conflict for LET in state 2 resolved as shift
+WARNING: shift/reduce conflict for INT in state 2 resolved as shift
+WARNING: reduce/reduce conflict in state 2 resolved using rule (program -> statements)
+WARNING: rejected rule (empty -> <empty>) in state 2
