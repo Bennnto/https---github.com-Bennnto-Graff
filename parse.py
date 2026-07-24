@@ -56,16 +56,11 @@ class BinOps_Node(Node):
 @dataclass    
 class Type_Node(Node):
     type : str
-
-@dataclass
-class Array_Type_Node(Node):
-    elem_type : Node
-    length : Optional[int] = None
     
 @dataclass
 class Assign_Node(Node):
     ident : str
-    type : Optional[Node]
+    type : Optional[Type_Node]
     value : Node
     
 @dataclass
@@ -111,13 +106,13 @@ class Return_Node(Node):
 @dataclass
 class Param_Node(Node):
     ident : str
-    type : Optional[Node]
+    type : Optional[Type_Node]
     value : Optional[Node]
     
 @dataclass
 class Function_Node(Node):
     ident : str
-    re_type : Optional[Node]
+    re_type : Optional[Type_Node]
     parameter : Optional[List[Param_Node]]
     body : List[Node]
 
@@ -154,6 +149,11 @@ class Method_Call_Node(Node):
     method : str
     args : List[Node]
 
+@dataclass
+class Array_Type_Node(Node):
+    elem_type : Node
+    length : Optional[int] = None
+    
 # Programs and Statements
 
 def p_program(p):
@@ -307,7 +307,7 @@ def p_param(p):
     elif len(p) == 4 and p[2] == '=':
         p[0] = Param_Node(ident=p[1], type=None, value=p[3])
     else :
-        p[0] = Param_Node(ident=p[1], type=None, value=None)
+        p[0] = Param_Node(ident=p[1], type=None, value=None)   
 
 def p_params(p):
     '''params : param
@@ -325,10 +325,11 @@ def p_param_list(p):
 def p_function_stmt(p):
     '''function_stmt : FUNCTION ID COLON type param_list COLON block
                      | FUNCTION ID param_list COLON block'''
-    if len(p) == 8:
+    if len(p) == 8 :
         p[0] = Function_Node(ident=p[2], re_type=p[4], parameter=p[5], body=p[7])
-    else:
-        p[0] = Function_Node(ident=p[2], re_type=None, parameter=p[3], body=p[5])
+    else :
+        p[0] = Function_Node(ident=p[2], re_type=None, parameter=p[3], body=[5])
+        
 
 def p_args(p):
     '''args : expression
@@ -402,11 +403,12 @@ def p_assign_stmt(p):
     else : 
         p[0] = Assign_Node(ident=p[1], type=None, value=p[3])
 
-# Array / List Expression Rules
+# List 
 
 def p_expression_array(p):
     '''expression : LBRACKET args RBRACKET
                   | LBRACKET empty RBRACKET'''
+    
     p[0] = Array_Node(elements=p[2])
 
 def p_expression_index(p):
@@ -420,7 +422,6 @@ def p_statement_index_assign(p):
 def p_expression_method_call(p):
     '''expression : expression DOT ID LPAREN arg_list RPAREN'''
     p[0] = Method_Call_Node(target=p[1], method=p[3], args=p[5])
-
 # Helper
 
 def p_empty(p):
