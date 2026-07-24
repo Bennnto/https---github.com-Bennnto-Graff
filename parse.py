@@ -328,7 +328,7 @@ def p_function_stmt(p):
     if len(p) == 8 :
         p[0] = Function_Node(ident=p[2], re_type=p[4], parameter=p[5], body=p[7])
     else :
-        p[0] = Function_Node(ident=p[2], re_type=None, parameter=p[3], body=[5])
+        p[0] = Function_Node(ident=p[2], re_type=None, parameter=p[3], body=p[5])
         
 
 def p_args(p):
@@ -386,8 +386,8 @@ def p_type(p):
         p[0] = Type_Node(type=p[1])
 
 def p_type_array(p):
-    '''type_array : type ARRAY LBRACKET INT RBRACKET
-                  | type ARRAY'''
+    '''type_array : type ARRAY_TYPE LBRACKET INT RBRACKET
+                  | type ARRAY_TYPE'''
     if len(p) == 6:
         p[0] = Array_Type_Node(elem_type=p[1], length=p[4])
     else:
@@ -397,9 +397,12 @@ def p_type_array(p):
 
 def p_assign_stmt(p):
     '''assign_stmt : LET ID COLON type ASSIGN expression optional_semicolon
+                   | LET ID ASSIGN expression optional_semicolon
                    | ID ASSIGN expression optional_semicolon'''
     if len(p) == 8:
         p[0] = Assign_Node(ident=p[2], type=p[4], value=p[6])
+    elif len(p) == 6:
+        p[0] = Assign_Node(ident=p[2], type=None, value=p[4])
     else : 
         p[0] = Assign_Node(ident=p[1], type=None, value=p[3])
 

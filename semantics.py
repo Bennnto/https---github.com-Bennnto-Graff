@@ -30,7 +30,13 @@ class Type_Infer:
             p_type = get_type_name(p.type) if p.type else ('int' if p.value is None else check(p.value, self.symtab))
             param_types.append(p_type)
         
+        self.symtab.push_scope()
+        for p, p_type in zip(params, param_types):
+            self.symtab.add(p.ident, p_type)
+            
         re_type = get_type_name(node.re_type) if node.re_type else self.infer_function_return_type(node)
+        self.symtab.pop_scope()
+        
         self.symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types))
 
     def infer_function_return_type(self, node):
@@ -146,7 +152,7 @@ def check(node, symtab):
         else:
             if left_type != right_type:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
-            if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str']:
+            if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str', 'any']:
                 raise TypeError(f"Error : Cannot perform {node.ops} on {left_type}")
             return left_type
         
@@ -197,16 +203,19 @@ def check(node, symtab):
         
     if isinstance(node, Function_Node):
         if symtab.current_scope_contains(node.ident):
-            raise SemanticError(f"Error : Function {node.ident} already defined in this scope")
+            existing = symtab.get(node.ident)
+            if not isinstance(existing, FunctionSymbol):
+                raise SemanticError(f"Error : Symbol {node.ident} already defined in this scope")
+        else:
+            params = node.parameter if node.parameter else []
+            param_types = [get_type_name(p.type) if p.type else 'any' for p in params]
+            re_type = get_type_name(node.re_type) if node.re_type else 'any'
+            symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types))
         
         params = node.parameter if node.parameter else []
-        param_types = [get_type_name(p.type) for p in params]
-        re_type = get_type_name(node.re_type)
-        symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types))
-        
         symtab.push_scope()
         for p in params:
-            p_type = get_type_name(p.type)
+            p_type = get_type_name(p.type) if p.type else 'any'
             if symtab.current_scope_contains(p.ident):
                 raise SemanticError(f"Error : Parameter {p.ident} already defined in this scope")
             symtab.add(p.ident, p_type)

@@ -12,6 +12,7 @@ tokens = (
     'FLOAT_TYPE',
     'VOID_TYPE',
     'ARRAY',
+    'ARRAY_TYPE',
     
     # Arithmetic Operators
     'ADD',
@@ -82,7 +83,7 @@ reserved_keys = {
     'void': 'VOID_TYPE',
     'float': 'FLOAT_TYPE',
     'for' : 'FOR',
-    'array': 'ARRAY',
+    'array': 'ARRAY_TYPE',
 }
 
 t_ASSIGN = r'\='
