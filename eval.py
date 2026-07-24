@@ -1,9 +1,51 @@
 from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, 
                    SingleOps_Node, Variable_Node, Bool_Node, Disp_Node, Entry_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
-                   Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node,
-                   Call_Node, For_Node, Float_Node)
+                   Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
+                   Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
+                   Array_Type_Node)
 
+class RuntimeArray:
+    def __init__(self, elements=None, max_len=None):
+        self.elements = list(elements) if elements is not None else []
+        self.max_len = max_len
+        
+    def push(self, value):
+        if self.max_len is not None:
+            raise RuntimeError(f"Error: Cannot push to fixed-size array of size {self.max_len}")
+        self.elements.append(value)
+        return len(self.elements)
+    
+    def pop(self):
+        if self.max_len is not None:
+            raise RuntimeError(f"Error: Cannot pop from fixed-size array of size {self.max_len}")
+        if not self.elements:
+            raise RuntimeError("Error : Cannot pop from empty array")
+        return self.elements.pop()
+    
+    def len(self):
+        return len(self.elements)
+    
+    def length(self):
+        return len(self.elements)
+
+    def get(self, index):
+        if not isinstance(index, int):
+            raise TypeError("Error : Index must be an integer")
+        if index < 0 or index >= len(self.elements):
+            raise IndexError("Error : Array index out of bounds")
+        return self.elements[index]
+    
+    def set(self, index, value):                                                                                                           
+        if not isinstance(index, int):                                                                                                     
+            raise TypeError("Error: Index must be an integer")                                                                             
+        if index < 0 or index >= len(self.elements):                                                                                       
+            raise IndexError("Error: Array index out of bounds")                                                                           
+        self.elements[index] = value                                                                                                       
+                                                                                                                                               
+    def __repr__(self):                                                                                                                    
+        return str(self.elements)   
+    
 class SemanticError(Exception):
     pass
 
@@ -28,14 +70,13 @@ def eval_ast(node, env, in_loop=False):
     
     elif isinstance(node, Assign_Node):
         value = eval_ast(node.value, env, in_loop=in_loop)
-        if node.type is not None:
-            if node.ident in env:
-                raise RuntimeError(f"Error: {node.ident} already initialized")
-            env[node.ident] = value
-        else:
-            if node.ident not in env:
-                raise RuntimeError(f"Error: Cannot reassign undeclared variable {node.ident}")
-            env[node.ident] = value
+        if isinstance(value, RuntimeArray) and isinstance(node.type, Array_Type_Node):
+            if node.type.length is not None:
+                if len(value.elements) != node.type.length:
+                    raise RuntimeError(f"Error: Fixed array expected {node.type.length} elements, got {len(value.elements)}")
+                value.max_len = node.type.length
+        
+        env[node.ident] = value
         return value
     
     elif isinstance(node, Type_Node):
@@ -198,24 +239,33 @@ def eval_ast(node, env, in_loop=False):
             if node.update:
                 eval_ast(node.update, local_env, in_loop=False)
         return result
-
-if __name__ == "__main__":
-    from lexicals import lexer
-    from parse import parser
-    from semantics import SymbolTable, check
     
-    test_code = """
-    let x: int = 10;
-    let y: int = 20;
-    fn add: int [a: int, b: int]: {
-        return a + b;
-    }
-    disp(add(x, y));
-    """
-    ast = parser.parse(test_code, lexer=lexer)
-    symtab = SymbolTable()
-    for stmt in ast:
-        check(stmt, symtab)
-    env = {}
-    for stmt in ast:
-        eval_ast(stmt, env)
+    elif isinstance(node, Array_Node):                                                                                                          
+        evaluated_elements = [eval_ast(elem, env, in_loop) for elem in node.elements]                                                          
+        return RuntimeArray(evaluated_elements)                                                                                                
+                                                                                                                                               
+    elif isinstance(node, Index_Node):                                                                                                         
+        target = eval_ast(node.target, env, in_loop)                                                                                           
+        index = eval_ast(node.index, env, in_loop)                                                                                             
+        if not isinstance(target, RuntimeArray):                                                                                               
+            raise RuntimeError("Error: Target is not an array")                                                                                
+        return target.get(index)                                                                                                               
+                                                                                                                                               
+    elif isinstance(node, Index_Assign_Node):                                                                                                  
+        target = eval_ast(node.target, env, in_loop)                                                                                           
+        index = eval_ast(node.index, env, in_loop)                                                                                             
+        value = eval_ast(node.value, env, in_loop)                                                                                             
+        if not isinstance(target, RuntimeArray):                                                                                               
+            raise RuntimeError("Error: Target is not an array")                                                                                
+        target.set(index, value)
+        return value
+  
+    elif isinstance(node, Method_Call_Node):
+        target_obj = eval_ast(node.target, env, in_loop)
+        eval_args = [eval_ast(arg, env, in_loop) if not isinstance(arg, list) else [eval_ast(x, env, in_loop) for x in arg] for arg in (node.args if node.args else [])]
+  
+        if not hasattr(target_obj, node.method):
+            raise RuntimeError(f"Error: Object has no method '{node.method}'")
+  
+        method = getattr(target_obj, node.method)
+        return method(*eval_args)

@@ -11,6 +11,7 @@ tokens = (
     'FLOAT',
     'FLOAT_TYPE',
     'VOID_TYPE',
+    'ARRAY',
     
     # Arithmetic Operators
     'ADD',
@@ -46,6 +47,7 @@ tokens = (
     'LBRACKET',
     'RBRACKET',
     'COMMA',
+    'DOT',
     
     # Keywords
     'ASSIGN',
@@ -79,7 +81,8 @@ reserved_keys = {
     'fn': 'FUNCTION',
     'void': 'VOID_TYPE',
     'float': 'FLOAT_TYPE',
-    'for' : 'FOR'
+    'for' : 'FOR',
+    'array': 'ARRAY',
 }
 
 t_ASSIGN = r'\='
@@ -108,6 +111,7 @@ t_NOT = r'!'
 t_OR = r'\|'
 t_AND = r'&'
 t_COMMA = r','
+t_DOT = r'\.'
 
 def t_ID(t):
     r'[A-Za-z_][A-Za-z0-9_]*'
@@ -120,12 +124,12 @@ def t_STR(t):
     return t
 
 def t_FLOAT(t):
-    r'[0-9]+\.[0-9]+'
+    r'-?[0-9]+\.[0-9]+'
     t.value = float(t.value)
     return t
 
 def t_INT(t):
-    r'[0-9]+'
+    r'-?[0-9]+'
     t.value = int(t.value)
     return t
 

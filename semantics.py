@@ -1,6 +1,7 @@
 from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, Variable_Node,
                    SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
-                   Call_Node, For_Node, Float_Node, Param_Node)
+                   Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
+                   Method_Call_Node, Array_Type_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -10,10 +11,47 @@ class SemanticError(Exception):
 class TypeError(Exception):
     pass
 
+class Type_Infer:
+    def __init__(self, symtab):
+        self.symtab = symtab
+    
+    def infer_program(self, ast):
+        for node in ast:
+            if isinstance(node, Function_Node):
+                self.infer_function_signature(node)
+            
+        for node in ast:
+            self.infer_node(node)
+
+    def infer_function_signature(self, node):
+        params = node.parameter if node.parameter else []
+        param_types = []
+        for p in params:
+            p_type = get_type_name(p.type) if p.type else ('int' if p.value is None else check(p.value, self.symtab))
+            param_types.append(p_type)
+        
+        re_type = get_type_name(node.re_type) if node.re_type else self.infer_function_return_type(node)
+        self.symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types))
+
+    def infer_function_return_type(self, node):
+        for stmt in node.body:
+            if isinstance(stmt, Return_Node) and stmt.expr:
+                return check(stmt.expr, self.symtab)
+        
+        return 'void'
+
+    def infer_node(self, node):
+        if isinstance(node, Assign_Node):
+            val_type = check(node.value, self.symtab)
+            if not self.symtab.current_scope_contains(node.ident):
+                self.symtab.add(node.ident, val_type)
+            return val_type
+        return check(node, self.symtab)
+
 @dataclass
 class FunctionSymbol:
-    return_type : str
-    param_types : List[str]
+    return_type : Any
+    param_types : List[Any]
 
 class SymbolTable:
     def __init__(self):
@@ -46,9 +84,19 @@ class SymbolTable:
     def current_scope_contains(self, name):
         return name in self.scopes[-1]
 
+    def contains(self, name):
+        try:
+            self.get(name)
+            return True
+        except SemanticError:
+            return False
+
 def get_type_name(t):
     if isinstance(t, Type_Node):
         t = t.type
+    if isinstance(t, Array_Type_Node):
+        elem = get_type_name(t.elem_type)
+        return f"array[{elem},{t.length}]" if t.length is not None else f"array[{elem}]"
     mapping = {
         'INT_TYPE': 'int',
         'STR_TYPE': 'str',
@@ -70,22 +118,19 @@ def check(node, symtab):
         return 'float'
     if isinstance(node, Type_Node):
         return get_type_name(node)
+    if isinstance(node, Array_Type_Node):
+        return get_type_name(node)
     
     if isinstance(node, Assign_Node):
         value_type = check(node.value, symtab)
-        if node.type is not None:
-            declared_type = get_type_name(node.type)
-            if value_type != declared_type:
-                raise TypeError(f"Error : Type Error type of {value_type} not compatible with expected {declared_type}")
-            if symtab.current_scope_contains(node.ident):
-                raise SemanticError(f"Error : {node.ident} already defined in this scope")
-            symtab.add(node.ident, declared_type)
-            return declared_type 
-        else :
-            existing_type = symtab.get(node.ident)
-            if value_type != existing_type :
-                raise TypeError(f"Error : Cannot assign {value_type} to variable {node.ident} of type {existing_type}")
-            return existing_type
+        if not symtab.contains(node.ident):
+            symtab.add(node.ident, value_type)
+            return value_type
+
+        existing_type = symtab.get(node.ident)
+        if existing_type != 'any' and value_type != existing_type:
+            raise TypeError(f"Error : Cannot assign {value_type} to variable {node.ident} expected {existing_type}")
+        return value_type
         
     if isinstance(node, BinOps_Node):
         left_type = check(node.left, symtab)
@@ -201,3 +246,45 @@ def check(node, symtab):
             
         symtab.pop_scope()
         return None
+
+    if isinstance(node, Array_Node):
+        if not node.elements:
+            return 'array'
+        first_elem_type = check(node.elements[0], symtab)
+        for elem in node.elements[1:]:
+            elem_type = check(elem, symtab)
+            if elem_type != first_elem_type:
+                raise TypeError(
+                    f"Error : All elements in array must be of the same type. "
+                    f"Expected '{first_elem_type}' type, but found '{elem_type}'"
+                )
+        return f"array[{first_elem_type}]"
+
+    if isinstance(node, Index_Node):
+        target_type = check(node.target, symtab)
+        index_type = check(node.index, symtab)
+        if index_type != 'int':
+            raise TypeError(f"Error : Array Index must be integer")
+        return 'any'
+
+    if isinstance(node, Index_Assign_Node):
+        target_type = check(node.target, symtab)
+        index_type = check(node.index, symtab)
+        value_type = check(node.value, symtab)
+        if index_type != 'int':
+            raise TypeError(f"Error : Array Index must be integer")
+        return value_type
+
+    if isinstance(node, Method_Call_Node):
+        target_type = check(node.target, symtab)
+        if node.args:
+            for arg in node.args:
+                check(arg, symtab)
+        if node.method in ('push', 'pop'):
+            if 'array[' in str(target_type) and ',' in str(target_type):
+                raise TypeError(f"Error : Cannot {node.method} on fixed-size array")
+        if node.method in ('len', 'length'):
+            return 'int'
+        elif node.method == 'pop':
+            return 'any'
+        return 'any'
