@@ -70,6 +70,8 @@ reserved_keys = {
     'int' : 'INT_TYPE',
     'str' : 'STR_TYPE',
     'bool' : 'BOOL_TYPE',
+    'true' : 'BOOL',
+    'false': 'BOOL',
     'let' : 'LET',
     'disp' : 'DISP',
     'entry': 'ENTRY',
@@ -117,6 +119,8 @@ t_DOT = r'\.'
 def t_ID(t):
     r'[A-Za-z_][A-Za-z0-9_]*'
     t.type = reserved_keys.get(t.value, "ID")
+    if t.type == 'BOOL':
+        t.value = (t.value == 'true')
     return t
 
 def t_STR(t):
