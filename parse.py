@@ -225,12 +225,12 @@ def p_variable(p):
                 | BOOL
                 | ID
                 | FLOAT'''
-    if isinstance(p[1], int):
+    if isinstance(p[1], bool):
+        p[0] = Bool_Node(p[1])
+    elif isinstance(p[1], int):
         p[0] = Int_Node(int(p[1]))
     elif isinstance(p[1], str) and p.slice[1].type == 'STR':
         p[0] = Str_Node(str(p[1]))
-    elif isinstance(p[1], bool):
-        p[0] = Bool_Node(p[1])
     elif isinstance(p[1], float):
         p[0] = Float_Node(p[1])
     else :

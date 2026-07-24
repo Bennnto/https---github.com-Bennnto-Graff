@@ -142,19 +142,19 @@ def check(node, symtab):
         left_type = check(node.left, symtab)
         right_type = check(node.right, symtab)
         if node.ops in ['>', '<', '>=', '<=', '==', '!=']:
-            if left_type != right_type:
+            if left_type != 'any' and right_type != 'any' and left_type != right_type:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
             return 'bool'
         elif node.ops in ['&', '|']:
-            if left_type != 'bool' or right_type != 'bool':
+            if (left_type != 'bool' and left_type != 'any') or (right_type != 'bool' and right_type != 'any'):
                 raise TypeError(f"Error : Logical operations require boolean types")
             return 'bool'
         else:
-            if left_type != right_type:
+            if left_type != 'any' and right_type != 'any' and left_type != right_type:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
             if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str', 'any']:
                 raise TypeError(f"Error : Cannot perform {node.ops} on {left_type}")
-            return left_type
+            return left_type if left_type != 'any' else right_type
         
     if isinstance(node, Variable_Node):
         return symtab.get(node.ident)
