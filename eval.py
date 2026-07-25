@@ -4,6 +4,7 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node)
+from environment import Environment
 
 class RuntimeArray:
     def __init__(self, elements=None, max_len=None):
@@ -141,16 +142,17 @@ def eval_ast(node, env, in_loop=False):
        
     elif isinstance(node, If_Else_Node):
         condition = eval_ast(node.condition, env, in_loop=in_loop)
+        block_env = Environment(parent=env)
         if condition:
             result = None
             for stmt in node.if_block:
-                result = eval_ast(stmt, env, in_loop=in_loop)
+                result = eval_ast(stmt, block_env, in_loop=in_loop)
             return result
         else:
             if node.else_block:
                 result = None
                 for stmt in node.else_block:
-                    result = eval_ast(stmt, env, in_loop=in_loop)
+                    result = eval_ast(stmt, block_env, in_loop=in_loop)
                 return result 
             return None
     
@@ -160,9 +162,10 @@ def eval_ast(node, env, in_loop=False):
             condition = eval_ast(node.condition, env, in_loop=in_loop)
             if not condition:
                 break
+            block_env = Environment(parent=env)
             try:
                 for stmt in node.while_block:
-                    result = eval_ast(stmt, env, in_loop=True)
+                    result = eval_ast(stmt, block_env, in_loop=True)
             except Continue_Exception:
                 continue
             except Break_Exception:
@@ -205,39 +208,40 @@ def eval_ast(node, env, in_loop=False):
         if len(eval_args) != len(params):
             raise RuntimeError(f"Error: Function {node.ident} expected {len(params)} arguments, got {len(eval_args)}")
         
-        local_env = dict(env)
+        func_env = Environment(parent=env)
         for param, arg_val in zip(params, eval_args):
             param_name = param.ident if hasattr(param, 'ident') else param
-            local_env[param_name] = arg_val
+            func_env.set(param_name, arg_val)
                   
         result = None
         try:
             for stmt in func.body:
-                result = eval_ast(stmt, local_env, in_loop=False)
+                result = eval_ast(stmt, func_env, in_loop=False)
         except Return_Exception as ret:
             return ret.value
         
         return result
         
     elif isinstance(node, For_Node):
-        local_env = dict(env)
+        for_env = Environment(parent=env)
         if node.init:
-            eval_ast(node.init, local_env, in_loop=False)
+            eval_ast(node.init, for_env, in_loop=False)
             
         result = None
         while True:
-            condition_val = eval_ast(node.condition, local_env, in_loop=in_loop)
+            condition_val = eval_ast(node.condition, for_env, in_loop=in_loop)
             if not condition_val:
                 break
+            block_env = Environment(parent=for_env)
             try:
                 for stmt in node.for_block:
-                    result = eval_ast(stmt, local_env, in_loop=True)
+                    result = eval_ast(stmt, block_env, in_loop=True)
             except Continue_Exception:
                 pass
             except Break_Exception:
                 break
             if node.update:
-                eval_ast(node.update, local_env, in_loop=False)
+                eval_ast(node.update, for_env, in_loop=False)
         return result
     
     elif isinstance(node, Array_Node):                                                                                                          
