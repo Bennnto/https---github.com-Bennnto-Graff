@@ -163,6 +163,17 @@ class Hash_Type_Node(Node):
     key_type : Node
     value_type : Node
     
+@dataclass
+class Throw_Node(Node):
+    expr : Node
+
+@dataclass
+class Try_Ok_Node(Node):
+    try_block : Any
+    is_ok_ident : str
+    err_ident : str
+    ok_block : Any
+    
 # Programs and Statements
 
 def p_program(p):
@@ -183,7 +194,9 @@ def p_statement(p):
                  | continue_stmt
                  | break_stmt
                  | return_stmt
-                 | call_stmt'''
+                 | call_stmt
+                 | try_ok_stmt
+                 | throw_stmt'''
     p[0] = p[1]
     
 def p_statements(p):
@@ -462,6 +475,16 @@ def p_hash_elements(p):
         p[0] = [p[1]]   
     else:
         p[0] = p[1] + [p[3]]
+
+# Try and Throw
+
+def p_throw_stmt(p):
+    '''throw_stmt : THROW expression optional_semicolon'''
+    p[0] = Throw_Node(expr=p[2])
+
+def p_try_ok_stmt(p):
+    '''try_ok_stmt : TRY COLON block OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON block'''
+    p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident=p[6], err_ident=p[8], ok_block=p[11])
 
 # Helper
 

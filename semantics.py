@@ -1,7 +1,7 @@
 from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, Variable_Node,
                    SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
-                   Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node)
+                   Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -317,5 +317,29 @@ def check(node, symtab):
             if value_type != first_value_type:
                 raise TypeError(f"Error : Value type expected {first_value_type} type got {value_type}")
         return f"hash[{first_key_type}, {first_value_type}]"
+
+    if isinstance(node, Throw_Node):
+        check(node.expr, symtab)
+        return None
+
+    if isinstance(node, Try_Ok_Node):
+        if isinstance(node.try_block, list):
+            for stmt in node.try_block:
+                check(stmt, symtab)
+        else:
+            check(node.try_block, symtab)
+
+        symtab.push_scope()
+        symtab.add(node.is_ok_ident, 'bool')
+        symtab.add(node.err_ident, 'str')
+
+        if isinstance(node.ok_block, list):
+            for stmt in node.ok_block:
+                check(stmt, symtab)
+        else:
+            check(node.ok_block, symtab)
+
+        symtab.pop_scope()
+        return None
 
 

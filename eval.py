@@ -3,8 +3,12 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
-                   Array_Type_Node, Hash_Node, Hash_Type_Node)
+                   Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node)
 from environment import Environment
+
+class VelnException(Exception):
+    def __init__(self, message):
+        self.message = str(message)
 
 class RuntimeHash:
     def __init__(self, pairs=None):
@@ -318,5 +322,36 @@ def eval_ast(node, env, in_loop=False):
     elif isinstance(node, Hash_Node):
         pairs = [(eval_ast(key, env, in_loop), eval_ast(val, env, in_loop)) for key, val in node.elements]
         return RuntimeHash(pairs)
+
+    elif isinstance(node, Throw_Node):
+        val = eval_ast(node.expr, env, in_loop)
+        raise VelnException(str(val))
+
+    elif isinstance(node, Try_Ok_Node):
+        try_env = Environment(parent=env)
+        is_ok = True
+        err_msg = ""
+        result = None
+        try:
+            if isinstance(node.try_block, list):
+                for stmt in node.try_block:
+                    result = eval_ast(stmt, try_env, in_loop)
+            else:
+                result = eval_ast(node.try_block, try_env, in_loop)
+        except (VelnException, RuntimeError, ZeroDivisionError, TypeError, KeyError) as ex:
+            is_ok = False
+            err_msg = ex.message if isinstance(ex, VelnException) else str(ex)
+
+        ok_env = Environment(parent=env)
+        ok_env.set(node.is_ok_ident, is_ok)
+        ok_env.set(node.err_ident, err_msg)
+
+        if isinstance(node.ok_block, list):
+            for stmt in node.ok_block:
+                result = eval_ast(stmt, ok_env, in_loop)
+        else:
+            result = eval_ast(node.ok_block, ok_env, in_loop)
+
+        return result
 
     

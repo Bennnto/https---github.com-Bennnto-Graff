@@ -66,6 +66,9 @@ tokens = (
     'RETURN',
     'FUNCTION', 
     'FOR',
+    'TRY',
+    'THROW',
+    'OK_CHECK',
 )
 
 reserved_keys = {
@@ -89,6 +92,9 @@ reserved_keys = {
     'for' : 'FOR',
     'array': 'ARRAY_TYPE',
     'hash': 'HASH_TYPE',
+    'try': 'TRY',
+    'throw': 'THROW',
+    'ok?': 'OK_CHECK',
 }
 
 t_EQ = r'=='   
@@ -118,6 +124,10 @@ t_OR = r'\|'
 t_AND = r'&'
 t_COMMA = r','
 t_DOT = r'\.'
+
+def t_OK_CHECK(t):
+    r'ok\?'
+    return t
 
 def t_ID(t):
     r'[A-Za-z_][A-Za-z0-9_]*'
