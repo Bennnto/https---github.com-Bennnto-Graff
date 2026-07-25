@@ -153,6 +153,15 @@ class Method_Call_Node(Node):
 class Array_Type_Node(Node):
     elem_type : Node
     length : Optional[int] = None
+
+@dataclass
+class Hash_Node(Node):
+    elements : List[tuple[Node, Node]]
+
+@dataclass
+class Hash_Type_Node(Node): 
+    key_type : Node
+    value_type : Node
     
 # Programs and Statements
 
@@ -379,7 +388,8 @@ def p_type(p):
             | BOOL_TYPE
             | FLOAT_TYPE
             | VOID_TYPE
-            | type_array'''
+            | type_array
+            | type_hash'''
     if isinstance(p[1], Node):
         p[0] = p[1]
     else:
@@ -393,6 +403,14 @@ def p_type_array(p):
     else:
         p[0] = Array_Type_Node(elem_type=p[1], length=None)
     
+def p_type_hash(p):
+    '''type_hash : HASH_TYPE LBRACKET type COMMA type RBRACKET
+                 | HASH_TYPE'''
+    if len(p) == 7 :
+        p[0] = Hash_Type_Node(key_type=p[3], value_type=p[5])    
+    else :
+        p[0] = Hash_Type_Node(key_type=None, value_type=None)
+        
 # Assign
 
 def p_assign_stmt(p):
@@ -425,6 +443,26 @@ def p_statement_index_assign(p):
 def p_expression_method_call(p):
     '''expression : expression DOT ID LPAREN arg_list RPAREN'''
     p[0] = Method_Call_Node(target=p[1], method=p[3], args=p[5])
+
+# Hash
+
+def p_expression_hash(p):
+    '''expression : LBRACE hash_elements RBRACE
+                  | LBRACE empty RBRACE'''
+    p[0] = Hash_Node(elements=p[2])
+
+def p_hash_element(p):
+    '''hash_element : expression COLON expression'''
+    p[0] = (p[1], p[3])
+
+def p_hash_elements(p):
+    '''hash_elements : hash_element
+                     | hash_elements COMMA hash_element'''
+    if len(p) == 2:
+        p[0] = [p[1]]   
+    else:
+        p[0] = p[1] + [p[3]]
+
 # Helper
 
 def p_empty(p):

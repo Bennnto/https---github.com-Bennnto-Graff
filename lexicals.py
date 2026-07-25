@@ -13,6 +13,8 @@ tokens = (
     'VOID_TYPE',
     'ARRAY',
     'ARRAY_TYPE',
+    'HASH_TYPE',
+    'HASH',
     
     # Arithmetic Operators
     'ADD',
@@ -86,6 +88,7 @@ reserved_keys = {
     'float': 'FLOAT_TYPE',
     'for' : 'FOR',
     'array': 'ARRAY_TYPE',
+    'hash': 'HASH_TYPE',
 }
 
 t_EQ = r'=='   

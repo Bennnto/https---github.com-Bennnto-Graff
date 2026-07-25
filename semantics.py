@@ -1,7 +1,7 @@
 from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, Variable_Node,
                    SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
-                   Method_Call_Node, Array_Type_Node)
+                   Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -100,6 +100,12 @@ class SymbolTable:
 def get_type_name(t):
     if isinstance(t, Type_Node):
         t = t.type
+        
+    if isinstance(t, Hash_Type_Node):
+        key_t = get_type_name(t.key_type) if t.key_type else 'any'
+        value_t = get_type_name(t.value_type) if t.value_type else 'any'
+        return f"hash[{key_t}, {value_t}]"
+
     if isinstance(t, Array_Type_Node):
         elem = get_type_name(t.elem_type)
         return f"array[{elem},{t.length}]" if t.length is not None else f"array[{elem}]"
@@ -272,7 +278,7 @@ def check(node, symtab):
     if isinstance(node, Index_Node):
         target_type = check(node.target, symtab)
         index_type = check(node.index, symtab)
-        if index_type != 'int':
+        if 'array[' in str(target_type) and index_type != 'int':
             raise TypeError(f"Error : Array Index must be integer")
         return 'any'
 
@@ -280,7 +286,7 @@ def check(node, symtab):
         target_type = check(node.target, symtab)
         index_type = check(node.index, symtab)
         value_type = check(node.value, symtab)
-        if index_type != 'int':
+        if 'array[' in str(target_type) and index_type != 'int':
             raise TypeError(f"Error : Array Index must be integer")
         return value_type
 
@@ -297,3 +303,19 @@ def check(node, symtab):
         elif node.method == 'pop':
             return 'any'
         return 'any'
+
+    if isinstance(node, Hash_Node):
+        if not node.elements :
+            return 'hash'
+        first_key_type = check(node.elements[0][0], symtab)
+        first_value_type = check(node.elements[0][1], symtab)
+        for elem in node.elements[1:]:
+            key_type = check(elem[0], symtab)
+            value_type = check(elem[1], symtab)
+            if key_type != first_key_type:
+                raise TypeError(f"Error : Key type expected {first_key_type} type got {key_type}")
+            if value_type != first_value_type:
+                raise TypeError(f"Error : Value type expected {first_value_type} type got {value_type}")
+        return f"hash[{first_key_type}, {first_value_type}]"
+
+

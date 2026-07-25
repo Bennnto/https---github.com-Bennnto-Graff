@@ -3,8 +3,44 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
-                   Array_Type_Node)
+                   Array_Type_Node, Hash_Node, Hash_Type_Node)
 from environment import Environment
+
+class RuntimeHash:
+    def __init__(self, pairs=None):
+        self.data = {}
+        if pairs:
+            for k, v in pairs:
+                self.data[k] = v
+
+    def get(self, key):
+        if key not in self.data:
+            raise RuntimeError(f"Error : key {key} not found in hash")
+        return self.data[key]
+    
+    def set(self, key, value):
+        self.data[key] = value
+
+    def len(self):
+        return len(self.data)
+
+    def keys(self):
+        return RuntimeArray(list(self.data.keys()))
+
+    def values(self):
+        return RuntimeArray(list(self.data.values()))
+
+    def contains(self, key):
+        return key in self.data
+
+    def remove(self, key):
+        if key not in self.data:
+            raise RuntimeError(f"Error : key {key} not found in hash")
+        del self.data[key]
+        return self.data
+
+    def clear(self):
+        self.data.clear()
 
 class RuntimeArray:
     def __init__(self, elements=None, max_len=None):
@@ -251,18 +287,23 @@ def eval_ast(node, env, in_loop=False):
     elif isinstance(node, Index_Node):                                                                                                         
         target = eval_ast(node.target, env, in_loop)                                                                                           
         index = eval_ast(node.index, env, in_loop)                                                                                             
-        if not isinstance(target, RuntimeArray):                                                                                               
-            raise RuntimeError("Error: Target is not an array")                                                                                
-        return target.get(index)                                                                                                               
-                                                                                                                                               
+        if isinstance(target, RuntimeArray):                                                                                                                                                                             
+            return target.get(index)                                                                                                               
+        if isinstance(target, RuntimeHash):
+            return target.get(index)
+        raise RuntimeError("Error: Target is not an array or hash")   
+
     elif isinstance(node, Index_Assign_Node):                                                                                                  
         target = eval_ast(node.target, env, in_loop)                                                                                           
         index = eval_ast(node.index, env, in_loop)                                                                                             
         value = eval_ast(node.value, env, in_loop)                                                                                             
-        if not isinstance(target, RuntimeArray):                                                                                               
-            raise RuntimeError("Error: Target is not an array")                                                                                
-        target.set(index, value)
-        return value
+        if isinstance(target, RuntimeArray):                                                                                                                                                                                 
+            target.set(index, value)
+            return value
+        if isinstance(target, RuntimeHash):
+            target.set(index, value)
+            return value
+        raise RuntimeError("Error: Index assignment target is not an array or hash") 
   
     elif isinstance(node, Method_Call_Node):
         target_obj = eval_ast(node.target, env, in_loop)
@@ -273,3 +314,9 @@ def eval_ast(node, env, in_loop=False):
   
         method = getattr(target_obj, node.method)
         return method(*eval_args)
+
+    elif isinstance(node, Hash_Node):
+        pairs = [(eval_ast(key, env, in_loop), eval_ast(val, env, in_loop)) for key, val in node.elements]
+        return RuntimeHash(pairs)
+
+    
