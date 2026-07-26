@@ -48,3 +48,17 @@ if __name__ == "__main__":
     }
     '''
     test_case(code2, "status", True)
+
+    code3 = '''
+    let msg2 = "";
+    try : 
+        let age = -10;
+        if age < 0 {
+            throw "Unbraced age error!";
+        }
+    ok? [is_ok, err]:
+        if !is_ok {
+            msg2 = err;
+        }
+    '''
+    test_case(code3, "msg2", "Unbraced age error!")

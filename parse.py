@@ -483,7 +483,8 @@ def p_throw_stmt(p):
     p[0] = Throw_Node(expr=p[2])
 
 def p_try_ok_stmt(p):
-    '''try_ok_stmt : TRY COLON block OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON block'''
+    '''try_ok_stmt : TRY COLON block OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON block
+                    | TRY COLON statements OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON statements'''
     p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident=p[6], err_ident=p[8], ok_block=p[11])
 
 # Helper
