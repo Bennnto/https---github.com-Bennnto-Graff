@@ -184,6 +184,11 @@ class Assert_Eq_Node(Node):
     actual : Node
     expected : Node
 
+@dataclass
+class Attempt_Node(Node):
+    retry : Node
+    attempt_block : Node
+    fallback_block : Node
 
 # Programs and Statements
 
@@ -209,7 +214,8 @@ def p_statement(p):
                  | try_ok_stmt
                  | throw_stmt
                  | assert_stmt
-                 | assert_eq_stmt'''
+                 | assert_eq_stmt
+                 | attempt_stmt'''
     p[0] = p[1]
     
 def p_statements(p):
@@ -523,6 +529,16 @@ def p_assert_eq_stmt(p):
     '''assert_eq_stmt : ASSERT_EQ expression COMMA expression optional_semicolon'''
     p[0] = Assert_Eq_Node(actual=p[2], expected=p[4])
     
+# Attempt / Fallback
+def p_attempt_stmt(p):
+    '''attempt_stmt : ATTEMPT LPAREN expression RPAREN COLON block FALLBACK COLON block
+                    | ATTEMPT LPAREN expression RPAREN COLON block
+                    | ATTEMPT LPAREN expression RPAREN COLON statements FALLBACK COLON statements
+                    | ATTEMPT LPAREN expression RPAREN COLON statements'''
+    if len(p) >= 9:
+        p[0] = Attempt_Node(retry=p[3], attempt_block=p[6], fallback_block=p[9])
+    elif len(p) == 7:
+        p[0] = Attempt_Node(retry=p[3], attempt_block=p[6], fallback_block=None)
 # Helper
 
 def p_empty(p):

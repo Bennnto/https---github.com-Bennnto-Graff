@@ -2,7 +2,7 @@ from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str
                    SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node)
+                   Assert_Node, Assert_Eq_Node, Attempt_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -356,3 +356,25 @@ def check(node, symtab):
             raise TypeError(f"Error : Expected {expected_type} got {actual_type}")
         return expected_type
 
+    if isinstance(node, Attempt_Node):
+        retry_type = check(node.retry, symtab)
+        if retry_type != 'int':
+            raise TypeError(f"Error : Retry amount expected 'int' type got {retry_type} type")
+        
+        symtab.push_scope()
+        if isinstance(node.attempt_block, list):
+            for stmt in node.attempt_block:
+                check(stmt, symtab)
+        else:
+            check(node.attempt_block, symtab)
+        symtab.pop_scope()
+
+        if node.fallback_block:
+            symtab.push_scope()
+            if isinstance(node.fallback_block, list):
+                for stmt in node.fallback_block:
+                    check(stmt, symtab)
+            else:
+                check(node.fallback_block, symtab)
+        symtab.pop_scope()
+        return None

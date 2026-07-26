@@ -1,10 +1,14 @@
+import _collections_abc
+import _collections_abc
+import _collections_abc
+import _collections_abc
 from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, 
                    SingleOps_Node, Variable_Node, Bool_Node, Disp_Node, Entry_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node)
+                   Assert_Node, Assert_Eq_Node, Attempt_Node)
 from environment import Environment
 
 class VelnException(Exception):
@@ -369,4 +373,42 @@ def eval_ast(node, env, in_loop=False):
             raise VelnException(f"Assertion Error: Expected {expected}, got {actual}")
         return None
 
-    
+    elif isinstance(node, Attempt_Node):
+        attempt_env = Environment(parent=env)
+        retry_count = eval_ast(node.retry, env, in_loop)
+        i = 0
+        result = None
+        while i < retry_count :
+            try:
+                if isinstance(node.attempt_block, list):
+                    for stmt in node.attempt_block:
+                        result=eval_ast(stmt, attempt_env, in_loop)
+                else:
+                    result=eval_ast(node.attempt_block, attempt_env, in_loop)
+                for k, v in attempt_env.bindings.items():
+                    env.set(k, v)
+                return result
+            except Return_Exception:
+                for k, v in attempt_env.bindings.items():
+                    env.set(k, v)
+                return result
+            except (VelnException, RuntimeError, ZeroDivisionError, TypeError, KeyError) as ex:
+                last_ex = ex
+                i += 1
+        if node.fallback_block is not None :
+            fb_env = Environment(parent=env)   
+            if isinstance(node.fallback_block, list) :
+                for stmt in node.fallback_block:
+                    result = eval_ast(stmt, fb_env, in_loop)
+                return result
+            else:
+                result = eval_ast(node.fallback_block, fb_env, in_loop)
+            
+            for k, v in fb_env.bindings.items():
+                env.set(k, v)
+            return result
+        elif last_ex:
+            raise last_ex
+        return None
+         
+                
