@@ -1,6 +1,6 @@
 import ply.yacc as yacc
 from lexicals import lexer, tokens
-from typing import Optional, List
+from typing import Optional, List, Any
 from dataclasses import dataclass
 
 precedence = (
@@ -174,6 +174,17 @@ class Try_Ok_Node(Node):
     err_ident : str
     ok_block : Any
     
+@dataclass
+class Assert_Node(Node):
+    condition : Node
+    message : Optional[Node] = None
+
+@dataclass
+class Assert_Eq_Node(Node):
+    actual : Node
+    expected : Node
+
+
 # Programs and Statements
 
 def p_program(p):
@@ -196,7 +207,9 @@ def p_statement(p):
                  | return_stmt
                  | call_stmt
                  | try_ok_stmt
-                 | throw_stmt'''
+                 | throw_stmt
+                 | assert_stmt
+                 | assert_eq_stmt'''
     p[0] = p[1]
     
 def p_statements(p):
@@ -496,6 +509,20 @@ def p_try_ok_stmt(p):
     else:
         p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident="is_ok", err_ident="err", ok_block=p[6])
 
+# Assert / Assert_Eq
+
+def p_assert_stmt(p):
+    '''assert_stmt : ASSERT expression COMMA expression optional_semicolon
+                   | ASSERT expression optional_semicolon'''
+    if len(p) == 6:
+        p[0] = Assert_Node(condition=p[2], message=p[4])
+    else:
+        p[0] = Assert_Node(condition=p[2], message=None)
+
+def p_assert_eq_stmt(p):
+    '''assert_eq_stmt : ASSERT_EQ expression COMMA expression optional_semicolon'''
+    p[0] = Assert_Eq_Node(actual=p[2], expected=p[4])
+    
 # Helper
 
 def p_empty(p):

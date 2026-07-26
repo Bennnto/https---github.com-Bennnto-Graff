@@ -3,7 +3,8 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
-                   Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node)
+                   Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
+                   Assert_Node, Assert_Eq_Node)
 from environment import Environment
 
 class VelnException(Exception):
@@ -353,5 +354,19 @@ def eval_ast(node, env, in_loop=False):
             result = eval_ast(node.ok_block, ok_env, in_loop)
 
         return result
+
+    elif isinstance(node, Assert_Node):
+        cond = eval_ast(node.condition, env, in_loop)
+        if not cond:
+            msg = eval_ast(node.message, env, in_loop) if node.message else "Assertion Failed"
+            raise VelnException(f"Assertion Error: {msg}")
+        return None
+
+    elif isinstance(node, Assert_Eq_Node):
+        actual = eval_ast(node.actual, env, in_loop)
+        expected = eval_ast(node.expected, env, in_loop)
+        if actual != expected:
+            raise VelnException(f"Assertion Error: Expected {expected}, got {actual}")
+        return None
 
     

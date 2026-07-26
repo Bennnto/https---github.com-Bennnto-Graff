@@ -69,6 +69,8 @@ tokens = (
     'TRY',
     'THROW',
     'OK_CHECK',
+    'ASSERT',
+    'ASSERT_EQ',
 )
 
 reserved_keys = {
@@ -95,6 +97,8 @@ reserved_keys = {
     'try': 'TRY',
     'throw': 'THROW',
     'ok?': 'OK_CHECK',
+    'assert': 'ASSERT',
+    'assert_eq': 'ASSERT_EQ',
 }
 
 t_EQ = r'=='   
