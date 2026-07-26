@@ -69,3 +69,17 @@ if __name__ == "__main__":
         }
     '''
     test_case(code3, "msg3", "Unbraced age error!")
+
+    code4 = '''
+    let msg4 = "";
+    try : 
+        let age = -10;
+        if age < 0 {
+            throw "Unbraced 2-param error!";
+        }
+    ok? [is_ok, err] :
+        if !is_ok {
+            msg4 = err;
+        }
+    '''
+    test_case(code4, "msg4", "Unbraced 2-param error!")
