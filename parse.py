@@ -484,8 +484,17 @@ def p_throw_stmt(p):
 
 def p_try_ok_stmt(p):
     '''try_ok_stmt : TRY COLON block OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON block
-                    | TRY COLON statements OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON statements'''
-    p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident=p[6], err_ident=p[8], ok_block=p[11])
+                    | TRY COLON block OK_CHECK LBRACKET ID RBRACKET COLON block
+                    | TRY COLON block OK_CHECK COLON block
+                    | TRY COLON statements OK_CHECK LBRACKET ID COMMA ID RBRACKET COLON statements
+                    | TRY COLON statements OK_CHECK LBRACKET ID RBRACKET COLON statements
+                    | TRY COLON statements OK_CHECK COLON statements'''
+    if len(p) == 12:
+        p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident=p[6], err_ident=p[8], ok_block=p[11])
+    elif len(p) == 10:
+        p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident=p[6], err_ident="err", ok_block=p[9])
+    else:
+        p[0] = Try_Ok_Node(try_block=p[3], is_ok_ident="is_ok", err_ident="err", ok_block=p[6])
 
 # Helper
 

@@ -24,6 +24,7 @@ def test_case(code, var_name, expected_val):
     print(f"Passed : '{var_name}' == {expected_val}")
 
 if __name__ == "__main__":
+    # Variant 1: ok? [is_ok, err]
     code1 = '''
     let msg = "";
     try : {
@@ -39,26 +40,32 @@ if __name__ == "__main__":
     '''
     test_case(code1, "msg", "Age cannot be negative!")
 
+    # Variant 2: ok? [ok]
     code2 = '''
-    let status = false;
-    try : {
+    let out = "";
+    try :
         let x = 100;
-    } ok? [is_ok, err]: {
-        status = is_ok;
-    }
+        if x < 100 {
+            throw "error message print";
+        }
+    ok? [ok] :
+        if ok {
+            out = "Success!";
+        }
     '''
-    test_case(code2, "status", True)
+    test_case(code2, "out", "Success!")
 
+    # Variant 3: ok? (Default parameters is_ok and err)
     code3 = '''
-    let msg2 = "";
+    let msg3 = "";
     try : 
         let age = -10;
         if age < 0 {
             throw "Unbraced age error!";
         }
-    ok? [is_ok, err]:
+    ok? :
         if !is_ok {
-            msg2 = err;
+            msg3 = err;
         }
     '''
-    test_case(code3, "msg2", "Unbraced age error!")
+    test_case(code3, "msg3", "Unbraced age error!")
