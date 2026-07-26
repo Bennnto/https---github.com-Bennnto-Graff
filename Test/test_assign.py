@@ -32,3 +32,5 @@ if __name__ == "__main__":
     test_case("let c:bool = false", "c", False)
     test_case("let d = 5", "d", 5)
     test_case("let f:str = 'Hello World'", "f", 'Hello World')
+    test_case("let e1:float = 1e3", "e1", 1000.0)
+    test_case("let e2:float = 1.5e-2", "e2", 0.015)

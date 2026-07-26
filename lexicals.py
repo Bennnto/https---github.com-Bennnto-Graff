@@ -142,7 +142,7 @@ def t_STR(t):
     return t
 
 def t_FLOAT(t):
-    r'-?[0-9]+\.[0-9]+'
+    r'-?[0-9]+\.[0-9]+([eE][-+]?[0-9]+)?|-?[0-9]+[eE][-+]?[0-9]+'
     t.value = float(t.value)
     return t
 
