@@ -10,6 +10,7 @@ class LLVMCodeGenerator:
     def __init__(self):
         self.output = []      # List of LLVM IR assembly lines 
         self.reg_counter = 0  # Counter for unique registers (%1, %2, etc.)
+        self.label_counter = 0 # Counter for basic block labels
         self.symtab = {}      # Maps variable name -> LLVM Stack pointer (e.g. 'x' -> '%x')
         self.str_counter = 0
         self.str_decls = []
@@ -17,7 +18,7 @@ class LLVMCodeGenerator:
     def new_reg(self):
         """Generate a unique SSA virtual register name"""
         self.reg_counter += 1
-        return f"%{self.reg_counter}"
+        return f"%t{self.reg_counter}"
 
     def gen_target(self):
         """Dynamically detect OS and CPU architecture"""
@@ -35,14 +36,21 @@ class LLVMCodeGenerator:
         """Compile the AST into complete LLVM IR string."""
         self.str_counter = 0 
         self.str_decls = []
+        self.reg_counter = 0
+        self.label_counter = 0
         self.output = []
 
-        # 1. Generate body instructions first so string constants get populated!
+        # 1. Generate function definitions and body instructions separately!
+        func_lines = []
         body_lines = []
         old_output = self.output
-        self.output = body_lines
         for stmt in ast:
-            self.gen(stmt)
+            if isinstance(stmt, Function_Node):
+                self.output = func_lines
+                self.gen(stmt)
+            else:
+                self.output = body_lines
+                self.gen(stmt)
         self.output = old_output
 
         # 2. Header 
@@ -57,14 +65,17 @@ class LLVMCodeGenerator:
             self.output.append(decl)
         self.output.append('')
 
-        # 4. Main function
+        # 4. Global Function definitions
+        self.output.extend(func_lines)
+
+        # 5. Main function
         self.output.append('define i32 @main() {')
         self.output.append('entry:')
 
-        # 5. Body instructions
+        # 6. Body instructions
         self.output.extend(body_lines)
 
-        # 6. Footer
+        # 7. Footer
         self.output.append('    ret i32 0')
         self.output.append('}')
         return "\n".join(self.output)
@@ -117,21 +128,116 @@ class LLVMCodeGenerator:
         elif isinstance(node, BinOps_Node):
             left_reg = self.gen(node.left)
             right_reg = self.gen(node.right)
-            op_map = {
-                '+': 'add',
-                '-': 'sub',
-                '*': 'mul',
-                '/': 'sdiv'
-            }
-            op = op_map[node.ops]
+            if node.ops in ['==', '!=', '<', '>', '<=', '>=']:
+                cmp_map = {'==': 'eq', '!=': 'ne', '<': 'slt', '>': 'sgt', '<=': 'sle', '>=': 'sge'}
+                cond_reg = self.new_reg()
+                self.output.append(f"    {cond_reg} = icmp {cmp_map[node.ops]} i64 {left_reg}, {right_reg}")
+                res_reg = self.new_reg()
+                self.output.append(f"    {res_reg} = zext i1 {cond_reg} to i64")
+                return res_reg
+            else:
+                op_map = {'+': 'add', '-': 'sub', '*': 'mul', '/': 'sdiv'}
+                op = op_map[node.ops]
+                reg = self.new_reg()
+                self.output.append(f"    {reg} = {op} i64 {left_reg}, {right_reg}")
+                return reg
+
+        elif isinstance(node, While_Node):
+            lbl_id = self.label_counter
+            self.label_counter += 1
+            cond_label = f"while_cond_{lbl_id}"
+            body_label = f"while_body_{lbl_id}"
+            end_label = f"while_end_{lbl_id}"
+
+            self.output.append(f"    br label %{cond_label}")
+            self.output.append("")
+            self.output.append(f"{cond_label}:")
+            cond_val = self.gen(node.condition)
+            cond_i1 = self.new_reg()
+            self.output.append(f"    {cond_i1} = trunc i64 {cond_val} to i1")
+            self.output.append(f"    br i1 {cond_i1}, label %{body_label}, label %{end_label}")
+            self.output.append("")
+            self.output.append(f"{body_label}:")
+            for stmt in node.while_block:
+                self.gen(stmt)
+            self.output.append(f"    br label %{cond_label}")
+            self.output.append("")
+            self.output.append(f"{end_label}:")
+            return None
+
+        elif isinstance(node, Match_Node):
+            target_val = self.gen(node.target)
+            match_id = self.label_counter
+            self.label_counter += 1
+            end_label = f"match_end_{match_id}"
+            
+            for idx, case in enumerate(node.cases):
+                case_body_label = f"case_body_{match_id}_{idx}"
+                next_case_label = f"case_next_{match_id}_{idx}" if idx < len(node.cases) - 1 else end_label
+                
+                is_wildcard = isinstance(case.pattern, Variable_Node) and case.pattern.ident == '_'
+                if is_wildcard:
+                    self.output.append(f"    br label %{case_body_label}")
+                else:
+                    pat_val = self.gen(case.pattern)
+                    cmp_reg = self.new_reg()
+                    self.output.append(f"    {cmp_reg} = icmp eq i64 {target_val}, {pat_val}")
+                    self.output.append(f"    br i1 {cmp_reg}, label %{case_body_label}, label %{next_case_label}")
+                
+                self.output.append("")
+                self.output.append(f"{case_body_label}:")
+                for stmt in case.body:
+                    self.gen(stmt)
+                self.output.append(f"    br label %{end_label}")
+                self.output.append("")
+                if not is_wildcard and idx < len(node.cases) - 1:
+                    self.output.append(f"{next_case_label}:")
+            
+            self.output.append(f"{end_label}:")
+            return None
+
+        elif isinstance(node, Function_Node):
+            func_name = f"@{node.ident}"
+            param_strs = []
+            param_names = []
+            for p in (node.parameter or []):
+                p_type = self.gen(p.type) if p.type else "i64"
+                param_strs.append(f"{p_type} %{p.ident}_arg")
+                param_names.append((p.ident, p_type))
+            
+            ret_type = self.gen(node.re_type) if node.re_type else "i64"
+            self.output.append(f"define {ret_type} {func_name}({', '.join(param_strs)}) {{")
+            self.output.append("entry:")
+            
+            for p_name, p_type in param_names:
+                ptr_name = f"%{p_name}"
+                self.output.append(f"    {ptr_name} = alloca {p_type}, align 8")
+                self.output.append(f"    store {p_type} %{p_name}_arg, {p_type}* {ptr_name}, align 8")
+                self.symtab[p_name] = ptr_name
+                
+            for stmt in node.body:
+                self.gen(stmt)
+                
+            self.output.append(f"    ret {ret_type} 0")
+            self.output.append("}")
+            self.output.append("")
+            return None
+
+        elif isinstance(node, Return_Node):
+            val = self.gen(node.expr) if node.expr else "0"
+            self.output.append(f"    ret i64 {val}")
+            return None
+
+        elif isinstance(node, Call_Node):
+            arg_vals = [self.gen(a) for a in (node.parameter or [])]
+            arg_strs = [f"i64 {val}" for val in arg_vals]
             reg = self.new_reg()
-            self.output.append(f"    {reg} = {op} i64 {left_reg}, {right_reg}")
+            self.output.append(f"    {reg} = call i64 @{node.ident}({', '.join(arg_strs)})")
             return reg
 
         elif isinstance(node, Disp_Node):
             val = self.gen(node.expr)
             fmt_reg = self.new_reg()
-            # If displaying a string, use %s format string, otherwise %ld
             if isinstance(node.expr, Str_Node):
                 self.output.append(f"    {fmt_reg} = getelementptr [4 x i8], [4 x i8]* @.str.str, i64 0, i64 0")
                 self.output.append(f"    call i32 (i8*, ...) @printf(i8* {fmt_reg}, i8* {val})")
