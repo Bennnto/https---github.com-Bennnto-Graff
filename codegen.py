@@ -41,23 +41,30 @@ class LLVMCodeGenerator:
         self.output = []
 
         # 1. Generate function definitions and body instructions separately!
-        func_lines = []
+        self.func_lines = []
         body_lines = []
         old_output = self.output
         for stmt in ast:
             if isinstance(stmt, Function_Node):
-                self.output = func_lines
+                self.output = self.func_lines
                 self.gen(stmt)
             else:
                 self.output = body_lines
                 self.gen(stmt)
         self.output = old_output
 
-        # 2. Header 
+        # 2. Header and External C Runtime Declarations
         self.output.append(f'target triple = "{self.gen_target()}"')
         self.output.append("declare i32 @printf(i8*, ...)")
+        self.output.append("declare i32 @scanf(i8*, ...)")
+        self.output.append("declare i8* @malloc(i64)")
+        self.output.append("declare void @free(i8*)")
+        self.output.append("declare void @exit(i32)")
+        self.output.append("declare i64 @strlen(i8*)")
         self.output.append('@.str.int = private unnamed_addr constant [5 x i8] c"%ld\\0A\\00", align 1')
         self.output.append('@.str.str = private unnamed_addr constant [4 x i8] c"%s\\0A\\00", align 1')
+        self.output.append('@.str.scanf = private unnamed_addr constant [4 x i8] c"%ld\\00", align 1')
+        self.output.append('@.str.err = private unnamed_addr constant [15 x i8] c"Runtime Error\\0A\\00", align 1')
         self.output.append('')
 
         # 3. String constant declarations (MUST be global, outside functions!)
@@ -66,7 +73,7 @@ class LLVMCodeGenerator:
         self.output.append('')
 
         # 4. Global Function definitions
-        self.output.extend(func_lines)
+        self.output.extend(self.func_lines)
 
         # 5. Main function
         self.output.append('define i32 @main() {')
@@ -90,12 +97,14 @@ class LLVMCodeGenerator:
 
     def gen(self, node):
         """Recursively generates LLVM IR instruction for an AST node."""
-        # 1. Integer Literals (e.g. 10, 42)
+        if node is None:
+            return "0"
+
+        # 1. Literals
         if isinstance(node, Int_Node):
             return str(node.value)
 
         elif isinstance(node, Bool_Node):
-            # Convert true -> 1, false -> 0
             val_str = str(node.value).lower()
             return "1" if val_str == "true" or node.value is True else "0"
 
@@ -103,19 +112,23 @@ class LLVMCodeGenerator:
             str_name, byte_len = self.new_str(node.value)
             reg = self.new_reg()
             self.output.append(f"    {reg} = getelementptr [{byte_len} x i8], [{byte_len} x i8]* {str_name}, i64 0, i64 0")
-            return reg
+            res_int = self.new_reg()
+            self.output.append(f"    {res_int} = ptrtoint i8* {reg} to i64")
+            return res_int
 
         elif isinstance(node, Float_Node):
-            # Emit e.g. "3.141593" or "0.015000"
             return f"{float(node.value):.6f}"
-            
+
+        elif isinstance(node, Fstr_Node):
+            return self.gen(Str_Node(node.raw))
+
+        # 2. Variables & Assignment
         elif isinstance(node, Assign_Node):
             val = self.gen(node.value)
             if node.ident not in self.symtab:
                 ptr_name = f"%{node.ident}"
                 self.output.append(f"    {ptr_name} = alloca i64, align 8")
                 self.symtab[node.ident] = ptr_name
-            # store eval value into stack memory
             self.output.append(f"    store i64 {val}, i64* {self.symtab[node.ident]}, align 8")
             return val
 
@@ -124,6 +137,22 @@ class LLVMCodeGenerator:
             ptr_name = self.symtab[node.ident]
             self.output.append(f"    {reg} = load i64, i64* {ptr_name}, align 8")
             return reg
+
+        # 3. Operations (Unary & Binary)
+        elif isinstance(node, SingleOps_Node):
+            right_reg = self.gen(node.right)
+            res = self.new_reg()
+            if node.ops == '-':
+                self.output.append(f"    {res} = sub i64 0, {right_reg}")
+            elif node.ops in ['not', '!']:
+                cond = self.new_reg()
+                self.output.append(f"    {cond} = icmp eq i64 {right_reg}, 0")
+                self.output.append(f"    {res} = zext i1 {cond} to i64")
+            elif node.ops == '~':
+                self.output.append(f"    {res} = xor i64 {right_reg}, -1")
+            else:
+                return right_reg
+            return res
 
         elif isinstance(node, BinOps_Node):
             left_reg = self.gen(node.left)
@@ -135,13 +164,22 @@ class LLVMCodeGenerator:
                 res_reg = self.new_reg()
                 self.output.append(f"    {res_reg} = zext i1 {cond_reg} to i64")
                 return res_reg
+            elif node.ops in ['and', '&&']:
+                res = self.new_reg()
+                self.output.append(f"    {res} = and i64 {left_reg}, {right_reg}")
+                return res
+            elif node.ops in ['or', '||']:
+                res = self.new_reg()
+                self.output.append(f"    {res} = or i64 {left_reg}, {right_reg}")
+                return res
             else:
-                op_map = {'+': 'add', '-': 'sub', '*': 'mul', '/': 'sdiv'}
-                op = op_map[node.ops]
+                op_map = {'+': 'add', '-': 'sub', '*': 'mul', '/': 'sdiv', '%': 'srem'}
+                op = op_map.get(node.ops, 'add')
                 reg = self.new_reg()
                 self.output.append(f"    {reg} = {op} i64 {left_reg}, {right_reg}")
                 return reg
 
+        # 4. Control Flow (While, For, Match)
         elif isinstance(node, While_Node):
             lbl_id = self.label_counter
             self.label_counter += 1
@@ -158,8 +196,39 @@ class LLVMCodeGenerator:
             self.output.append(f"    br i1 {cond_i1}, label %{body_label}, label %{end_label}")
             self.output.append("")
             self.output.append(f"{body_label}:")
-            for stmt in node.while_block:
+            for stmt in (node.while_block or []):
                 self.gen(stmt)
+            self.output.append(f"    br label %{cond_label}")
+            self.output.append("")
+            self.output.append(f"{end_label}:")
+            return None
+
+        elif isinstance(node, For_Node):
+            lbl_id = self.label_counter
+            self.label_counter += 1
+            cond_label = f"for_cond_{lbl_id}"
+            body_label = f"for_body_{lbl_id}"
+            update_label = f"for_update_{lbl_id}"
+            end_label = f"for_end_{lbl_id}"
+
+            if node.init:
+                self.gen(node.init)
+            self.output.append(f"    br label %{cond_label}")
+            self.output.append("")
+            self.output.append(f"{cond_label}:")
+            cond_val = self.gen(node.condition) if node.condition else "1"
+            cond_i1 = self.new_reg()
+            self.output.append(f"    {cond_i1} = trunc i64 {cond_val} to i1")
+            self.output.append(f"    br i1 {cond_i1}, label %{body_label}, label %{end_label}")
+            self.output.append("")
+            self.output.append(f"{body_label}:")
+            for stmt in (node.for_block or []):
+                self.gen(stmt)
+            self.output.append(f"    br label %{update_label}")
+            self.output.append("")
+            self.output.append(f"{update_label}:")
+            if node.update:
+                self.gen(node.update)
             self.output.append(f"    br label %{cond_label}")
             self.output.append("")
             self.output.append(f"{end_label}:")
@@ -196,16 +265,17 @@ class LLVMCodeGenerator:
             self.output.append(f"{end_label}:")
             return None
 
+        # 5. Functions & Lambdas
         elif isinstance(node, Function_Node):
             func_name = f"@{node.ident}"
             param_strs = []
             param_names = []
             for p in (node.parameter or []):
-                p_type = self.gen(p.type) if p.type else "i64"
+                p_type = self.gen(p.type) if getattr(p, 'type', None) else "i64"
                 param_strs.append(f"{p_type} %{p.ident}_arg")
                 param_names.append((p.ident, p_type))
             
-            ret_type = self.gen(node.re_type) if node.re_type else "i64"
+            ret_type = self.gen(node.re_type) if getattr(node, 're_type', None) else "i64"
             self.output.append(f"define {ret_type} {func_name}({', '.join(param_strs)}) {{")
             self.output.append("entry:")
             
@@ -215,13 +285,34 @@ class LLVMCodeGenerator:
                 self.output.append(f"    store {p_type} %{p_name}_arg, {p_type}* {ptr_name}, align 8")
                 self.symtab[p_name] = ptr_name
                 
-            for stmt in node.body:
-                self.gen(stmt)
+            last_val = "0"
+            for stmt in (node.body or []):
+                res = self.gen(stmt)
+                if res is not None:
+                    last_val = res
                 
-            self.output.append(f"    ret {ret_type} 0")
+            if not (node.body and isinstance(node.body[-1], Return_Node)):
+                self.output.append(f"    ret {ret_type} {last_val}")
             self.output.append("}")
             self.output.append("")
             return None
+
+        elif isinstance(node, Lambda_Node):
+            lbl_id = self.label_counter
+            self.label_counter += 1
+            lambda_name = f"__lambda_{lbl_id}"
+            func_node = Function_Node(ident=lambda_name, re_type=node.return_type, parameter=node.params, body=[node.body] if not isinstance(node.body, list) else node.body)
+            old_out = self.output
+            if hasattr(self, 'func_lines'):
+                self.output = self.func_lines
+            self.gen(func_node)
+            self.output = old_out
+            param_types = [self.gen(p.type) if getattr(p, 'type', None) else "i64" for p in (node.params or [])]
+            ret_type = self.gen(node.return_type) if getattr(node, 'return_type', None) else "i64"
+            func_sig = f"{ret_type} ({', '.join(param_types)})*"
+            res = self.new_reg()
+            self.output.append(f"    {res} = ptrtoint {func_sig} @{lambda_name} to i64")
+            return res
 
         elif isinstance(node, Return_Node):
             val = self.gen(node.expr) if node.expr else "0"
@@ -232,8 +323,196 @@ class LLVMCodeGenerator:
             arg_vals = [self.gen(a) for a in (node.parameter or [])]
             arg_strs = [f"i64 {val}" for val in arg_vals]
             reg = self.new_reg()
-            self.output.append(f"    {reg} = call i64 @{node.ident}({', '.join(arg_strs)})")
+            if node.ident in self.symtab:
+                ptr_name = self.symtab[node.ident]
+                func_int = self.new_reg()
+                self.output.append(f"    {func_int} = load i64, i64* {ptr_name}, align 8")
+                func_ptr = self.new_reg()
+                arg_types = ", ".join(["i64"] * len(arg_vals))
+                self.output.append(f"    {func_ptr} = inttoptr i64 {func_int} to i64 ({arg_types})*")
+                self.output.append(f"    {reg} = call i64 {func_ptr}({', '.join(arg_strs)})")
+            else:
+                self.output.append(f"    {reg} = call i64 @{node.ident}({', '.join(arg_strs)})")
             return reg
+
+        elif isinstance(node, Method_Call_Node):
+            target_val = self.gen(node.target)
+            if node.method in ['length', 'len']:
+                str_ptr = self.new_reg()
+                self.output.append(f"    {str_ptr} = inttoptr i64 {target_val} to i8*")
+                reg = self.new_reg()
+                self.output.append(f"    {reg} = call i64 @strlen(i8* {str_ptr})")
+                return reg
+            else:
+                arg_vals = [target_val] + [self.gen(a) for a in (node.args or [])]
+                arg_strs = [f"i64 {val}" for val in arg_vals]
+                reg = self.new_reg()
+                self.output.append(f"    {reg} = call i64 @{node.method}({', '.join(arg_strs)})")
+                return reg
+
+        # 6. Arrays, Indexing, and Hash Maps (Heap Allocated via malloc)
+        elif isinstance(node, Array_Node):
+            n = len(node.elements)
+            byte_size = max(n * 8, 8)
+            raw_ptr = self.new_reg()
+            self.output.append(f"    {raw_ptr} = call i8* @malloc(i64 {byte_size})")
+            arr_ptr = self.new_reg()
+            self.output.append(f"    {arr_ptr} = bitcast i8* {raw_ptr} to i64*")
+            for idx, elem in enumerate(node.elements):
+                val = self.gen(elem)
+                elem_ptr = self.new_reg()
+                self.output.append(f"    {elem_ptr} = getelementptr i64, i64* {arr_ptr}, i64 {idx}")
+                self.output.append(f"    store i64 {val}, i64* {elem_ptr}, align 8")
+            res_int = self.new_reg()
+            self.output.append(f"    {res_int} = ptrtoint i64* {arr_ptr} to i64")
+            return res_int
+
+        elif isinstance(node, Index_Node):
+            arr_int = self.gen(node.target)
+            arr_ptr = self.new_reg()
+            self.output.append(f"    {arr_ptr} = inttoptr i64 {arr_int} to i64*")
+            idx_val = self.gen(node.index)
+            elem_ptr = self.new_reg()
+            self.output.append(f"    {elem_ptr} = getelementptr i64, i64* {arr_ptr}, i64 {idx_val}")
+            res = self.new_reg()
+            self.output.append(f"    {res} = load i64, i64* {elem_ptr}, align 8")
+            return res
+
+        elif isinstance(node, Index_Assign_Node):
+            arr_int = self.gen(node.target)
+            arr_ptr = self.new_reg()
+            self.output.append(f"    {arr_ptr} = inttoptr i64 {arr_int} to i64*")
+            idx_val = self.gen(node.index)
+            val = self.gen(node.value)
+            elem_ptr = self.new_reg()
+            self.output.append(f"    {elem_ptr} = getelementptr i64, i64* {arr_ptr}, i64 {idx_val}")
+            self.output.append(f"    store i64 {val}, i64* {elem_ptr}, align 8")
+            return val
+
+        elif isinstance(node, Hash_Node):
+            n = len(node.elements)
+            byte_size = max(n * 16, 16)
+            raw_ptr = self.new_reg()
+            self.output.append(f"    {raw_ptr} = call i8* @malloc(i64 {byte_size})")
+            hash_ptr = self.new_reg()
+            self.output.append(f"    {hash_ptr} = bitcast i8* {raw_ptr} to i64*")
+            for idx, (k, v) in enumerate(node.elements):
+                k_val = self.gen(k)
+                v_val = self.gen(v)
+                k_ptr = self.new_reg()
+                v_ptr = self.new_reg()
+                self.output.append(f"    {k_ptr} = getelementptr i64, i64* {hash_ptr}, i64 {idx * 2}")
+                self.output.append(f"    store i64 {k_val}, i64* {k_ptr}, align 8")
+                self.output.append(f"    {v_ptr} = getelementptr i64, i64* {hash_ptr}, i64 {idx * 2 + 1}")
+                self.output.append(f"    store i64 {v_val}, i64* {v_ptr}, align 8")
+            res_int = self.new_reg()
+            self.output.append(f"    {res_int} = ptrtoint i64* {hash_ptr} to i64")
+            return res_int
+
+        # 7. Pointers, Memory Management (Box, Ref, Deref, Move)
+        elif isinstance(node, Box_Node):
+            val = self.gen(node.expr)
+            raw_ptr = self.new_reg()
+            self.output.append(f"    {raw_ptr} = call i8* @malloc(i64 8)")
+            box_ptr = self.new_reg()
+            self.output.append(f"    {box_ptr} = bitcast i8* {raw_ptr} to i64*")
+            self.output.append(f"    store i64 {val}, i64* {box_ptr}, align 8")
+            res_int = self.new_reg()
+            self.output.append(f"    {res_int} = ptrtoint i64* {box_ptr} to i64")
+            return res_int
+
+        elif isinstance(node, Ref_Node):
+            ptr_name = self.symtab.get(node.var_name, "0")
+            res = self.new_reg()
+            self.output.append(f"    {res} = ptrtoint i64* {ptr_name} to i64")
+            return res
+
+        elif isinstance(node, Deref_Node):
+            ptr_int = self.gen(node.expr)
+            ptr = self.new_reg()
+            self.output.append(f"    {ptr} = inttoptr i64 {ptr_int} to i64*")
+            res = self.new_reg()
+            self.output.append(f"    {res} = load i64, i64* {ptr}, align 8")
+            return res
+
+        elif isinstance(node, Deref_Assign_Node):
+            ptr_int = self.gen(node.target)
+            ptr = self.new_reg()
+            self.output.append(f"    {ptr} = inttoptr i64 {ptr_int} to i64*")
+            val = self.gen(node.value)
+            self.output.append(f"    store i64 {val}, i64* {ptr}, align 8")
+            return val
+
+        elif isinstance(node, Move_Node):
+            ptr_name = self.symtab.get(node.var_name, "0")
+            res = self.new_reg()
+            self.output.append(f"    {res} = load i64, i64* {ptr_name}, align 8")
+            self.output.append(f"    store i64 0, i64* {ptr_name}, align 8")
+            return res
+
+        # 8. Error Handling & Assertions (Try/Ok, Throw, Assert)
+        elif isinstance(node, Throw_Node):
+            val = self.gen(node.expr)
+            fmt_reg = self.new_reg()
+            self.output.append(f"    {fmt_reg} = getelementptr [15 x i8], [15 x i8]* @.str.err, i64 0, i64 0")
+            self.output.append(f"    call i32 (i8*, ...) @printf(i8* {fmt_reg})")
+            self.output.append(f"    call void @exit(i32 1)")
+            return "0"
+
+        elif isinstance(node, Try_Ok_Node):
+            if node.try_block:
+                for stmt in (node.try_block if isinstance(node.try_block, list) else [node.try_block]):
+                    self.gen(stmt)
+            if node.ok_block:
+                for stmt in (node.ok_block if isinstance(node.ok_block, list) else [node.ok_block]):
+                    self.gen(stmt)
+            return None
+
+        elif isinstance(node, Attempt_Node):
+            if node.attempt_block:
+                self.gen(node.attempt_block)
+            return None
+
+        elif isinstance(node, (Assert_Node, Assert_Eq_Node)):
+            if isinstance(node, Assert_Node):
+                cond = self.gen(node.condition)
+            else:
+                actual = self.gen(node.actual)
+                expected = self.gen(node.expected)
+                cond = self.new_reg()
+                self.output.append(f"    {cond} = icmp eq i64 {actual}, {expected}")
+            
+            lbl_id = self.label_counter
+            self.label_counter += 1
+            ok_label = f"assert_ok_{lbl_id}"
+            fail_label = f"assert_fail_{lbl_id}"
+            
+            cond_i1 = self.new_reg()
+            self.output.append(f"    {cond_i1} = trunc i64 {cond} to i1")
+            self.output.append(f"    br i1 {cond_i1}, label %{ok_label}, label %{fail_label}")
+            self.output.append("")
+            self.output.append(f"{fail_label}:")
+            fmt_reg = self.new_reg()
+            self.output.append(f"    {fmt_reg} = getelementptr [15 x i8], [15 x i8]* @.str.err, i64 0, i64 0")
+            self.output.append(f"    call i32 (i8*, ...) @printf(i8* {fmt_reg})")
+            self.output.append(f"    call void @exit(i32 1)")
+            self.output.append(f"    br label %{ok_label}")
+            self.output.append("")
+            self.output.append(f"{ok_label}:")
+            return None
+
+        # 9. I/O & Types
+        elif isinstance(node, Entry_Node):
+            if node.expr:
+                self.gen(Disp_Node(expr=node.expr))
+            ptr = self.new_reg()
+            self.output.append(f"    {ptr} = alloca i64, align 8")
+            fmt = self.new_reg()
+            self.output.append(f"    {fmt} = getelementptr [4 x i8], [4 x i8]* @.str.scanf, i64 0, i64 0")
+            self.output.append(f"    call i32 (i8*, ...) @scanf(i8* {fmt}, i64* {ptr})")
+            res = self.new_reg()
+            self.output.append(f"    {res} = load i64, i64* {ptr}, align 8")
+            return res
 
         elif isinstance(node, Disp_Node):
             val = self.gen(node.expr)
@@ -246,7 +525,7 @@ class LLVMCodeGenerator:
                 self.output.append(f"    call i32 (i8*, ...) @printf(i8* {fmt_reg}, i64 {val})")
             return None
 
-        elif isinstance(node, Type_Node):
+        elif isinstance(node, (Type_Node, Array_Type_Node, Hash_Type_Node)):
             type_map = {
                 'int': 'i64',
                 'float': 'double',
@@ -254,4 +533,6 @@ class LLVMCodeGenerator:
                 'bool': 'i64',
                 'void': 'void'
             }
-            return type_map.get(node.type, 'i64')
+            if isinstance(node, Type_Node):
+                return type_map.get(node.type, 'i64')
+            return 'i64*'
