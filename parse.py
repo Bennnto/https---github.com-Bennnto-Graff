@@ -217,6 +217,10 @@ class Deref_Node(Node):
 class Deref_Assign_Node(Node):
     target : Node
     value : Node
+
+@dataclass
+class Fstr_Node(Node):
+    raw : str
     
 
 # Programs and Statements
@@ -611,6 +615,11 @@ def p_expression_memory(p):
 def p_statement_deref_assign(p):
     '''deref_assign_stmt : GT ID LT ASSIGN expression optional_semicolon'''
     p[0] = Deref_Assign_Node(target=Variable_Node(ident=p[2]), value=p[5])
+
+
+def p_expression_fstr(p):
+    '''expression : FSTR'''
+    p[0] = Fstr_Node(raw=p[1])
 
 # Helper
 

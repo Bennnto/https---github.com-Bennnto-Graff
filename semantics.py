@@ -3,7 +3,7 @@ from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node,
-                   Deref_Assign_Node,)
+                   Deref_Assign_Node, Fstr_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -428,4 +428,9 @@ def check(node, symtab):
             raise TypeError(f"Error : Cannot mutate through immutable reference {target_type} type")
         return None
 
+    if isinstance(node, Fstr_Node):
+        return 'str'
+
+
+    
 

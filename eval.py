@@ -4,9 +4,12 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node
-                   )
+                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node,
+                   Fstr_Node)
 from environment import Environment
+import re
+from lexicals import lexer
+from parse import parser
 
 class HeapPointer:
     def __init__(self, address):
@@ -477,4 +480,24 @@ def eval_ast(node, env, in_loop=False):
             heap_store[target_ref.address] = val
         return val
 
-                
+    elif isinstance(node, Fstr_Node):
+        raw = node.raw
+        result = ""
+        last_end = 0 
+
+        for match in re.finditer(r'\{([^}]+)\}', raw):
+            result += raw[last_end:match.start()]      
+            expr_text = match.group(1).strip()
+            expr_ast = parser.parse(expr_text, lexer=lexer)
+
+            if isinstance(expr_ast, list) and len(expr_ast) > 0 :
+                val = eval_ast(expr_ast[0], env, in_loop)
+            else:
+                val = eval_ast(expr_ast, env, in_loop)
+            result += str(val)
+            last_end = match.end()
+        result += raw[last_end:]
+        return result 
+        
+
+                        

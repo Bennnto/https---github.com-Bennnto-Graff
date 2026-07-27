@@ -15,6 +15,7 @@ tokens = (
     'ARRAY_TYPE',
     'HASH_TYPE',
     'HASH',
+    'FSTR',
     
     # Arithmetic Operators
     'ADD',
@@ -159,6 +160,11 @@ def t_ID(t):
     t.type = reserved_keys.get(t.value, "ID")
     if t.type == 'BOOL':
         t.value = (t.value == 'true')
+    return t
+
+def t_FSTR(t):
+    r'\"[^"]*\{[^"]*\"'
+    t.value = t.value[1:-1]
     return t
 
 def t_STR(t):
