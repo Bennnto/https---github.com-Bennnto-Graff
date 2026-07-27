@@ -190,6 +190,12 @@ class Attempt_Node(Node):
     attempt_block : Node
     fallback_block : Node
 
+@dataclass
+class Lambda_Node(Node):
+    params : list
+    return_type : Any
+    body : Node
+
 # Programs and Statements
 
 def p_program(p):
@@ -539,6 +545,18 @@ def p_attempt_stmt(p):
         p[0] = Attempt_Node(retry=p[3], attempt_block=p[6], fallback_block=p[9])
     elif len(p) == 7:
         p[0] = Attempt_Node(retry=p[3], attempt_block=p[6], fallback_block=None)
+
+# Lambda Function 
+def p_lambda_expr(p):
+    '''expression : LAMBDA LPAREN params RPAREN COLON type ARROW expression
+                  | LAMBDA LPAREN params RPAREN ARROW expression
+                  | LAMBDA LPAREN RPAREN ARROW expression'''
+    if len(p) == 9:
+        p[0] = Lambda_Node(params=p[3], return_type=p[6], body=p[8])
+    elif len(p) == 7:
+        p[0] = Lambda_Node(params=p[3], return_type=None, body=p[6])
+    else:
+        p[0] = Lambda_Node(params=[], return_type=None, body=p[5])
 # Helper
 
 def p_empty(p):

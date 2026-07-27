@@ -1,14 +1,10 @@
-import _collections_abc
-import _collections_abc
-import _collections_abc
-import _collections_abc
 from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, 
                    SingleOps_Node, Variable_Node, Bool_Node, Disp_Node, Entry_Node,
                    If_Else_Node, Break_Exception, Continue_Exception, While_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node, Attempt_Node)
+                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node)
 from environment import Environment
 
 class VelnException(Exception):
@@ -244,9 +240,15 @@ def eval_ast(node, env, in_loop=False):
         if node.ident not in env:
             raise RuntimeError(f"Error: Function {node.ident} not defined")
         func = env[node.ident]
+        args = node.parameter if node.parameter else []
+
+        if callable(func):
+            eval_args = [eval_ast(arg, env, in_loop=in_loop) for arg in args]
+            return func(*eval_args)
+
         if not isinstance(func, Function_Node):
             raise RuntimeError(f"Error: {node.ident} is not a function")
-        
+
         args = node.parameter if node.parameter else []
         eval_args = [eval_ast(arg, env, in_loop=in_loop) for arg in args]
         params = func.parameter if func.parameter else []
@@ -411,4 +413,18 @@ def eval_ast(node, env, in_loop=False):
             raise last_ex
         return None
          
+    elif isinstance(node, Lambda_Node):
+        capture_env = env
+        def lambda_func(*args):
+            local_env = Environment(parent=capture_env)
+            params = node.params if node.params else []
+            for i, param in enumerate(params):
+                param_name = param.ident if hasattr(param, 'ident') else param
+                local_env.set(param_name, args[i])
+            return eval_ast(node.body, local_env, in_loop=in_loop)
+        return lambda_func
+
+
+            
+
                 

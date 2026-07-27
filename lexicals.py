@@ -73,6 +73,8 @@ tokens = (
     'ASSERT_EQ',
     'FALLBACK',
     'ATTEMPT',
+    'ARROW',
+    'LAMBDA',
 )
 
 reserved_keys = {
@@ -102,7 +104,9 @@ reserved_keys = {
     'assert' : 'ASSERT',
     'assert_eq' : 'ASSERT_EQ',
     'attempt' : 'ATTEMPT',
-    'fallback' : 'FALLBACK'
+    'fallback' : 'FALLBACK',
+    'lambda' : 'LAMBDA',
+
 }
 
 t_EQ = r'=='   
@@ -132,6 +136,7 @@ t_OR = r'\|'
 t_AND = r'&'
 t_COMMA = r','
 t_DOT = r'\.'
+t_ARROW = r'=>'
 
 def t_OK_CHECK(t):
     r'ok\?'

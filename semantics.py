@@ -2,7 +2,7 @@ from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str
                    SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node, Attempt_Node)
+                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -235,16 +235,24 @@ def check(node, symtab):
     
     if isinstance(node, Call_Node):
         func_symbol = symtab.get(node.ident)
-        if not isinstance(func_symbol, FunctionSymbol):
+        if not isinstance(func_symbol, FunctionSymbol) and func_symbol != 'function':
             raise TypeError(f"Error : {node.ident} is not a function")
-        args = node.parameter if node.parameter else []
-        if len(args) != len(func_symbol.param_types):
-            raise TypeError(f"Error : Function {node.ident} expected {len(func_symbol.param_types)} arguments got {len(args)}")
-        for arg, expected_type in zip(args, func_symbol.param_types):
-            arg_type = check(arg, symtab)
-            if arg_type != expected_type:
-                raise TypeError(f"Error : Type Error type of {arg_type} not compatible with expected {expected_type}")           
-        return func_symbol.return_type
+        if isinstance(func_symbol, FunctionSymbol):
+            args = node.parameter if node.parameter else []
+            if len(args) != len(func_symbol.param_types):
+                raise TypeError(f"Error : Function {node.ident} expected {len(func_symbol.param_types)} arguments got {len(args)}")
+            for arg, expected_type in zip(args, func_symbol.param_types):
+                arg_type = check(arg, symtab)
+                if arg_type != expected_type:
+                    raise TypeError(f"Error : Type Error type of {arg_type} not compatible with expected {expected_type}")
+            return func_symbol.return_type
+        # Lambda / opaque function type: arity and arg types cannot be statically
+        # checked without the lambda's declared signature. Accept and infer 'any'.
+        if func_symbol == 'function':
+            args = node.parameter if node.parameter else []
+            for arg in args:
+                check(arg, symtab)
+        return 'any'
     
     if isinstance(node, For_Node):
         symtab.push_scope()
@@ -378,3 +386,16 @@ def check(node, symtab):
                 check(node.fallback_block, symtab)
         symtab.pop_scope()
         return None
+    
+    if isinstance(node, Lambda_Node):
+        symtab.push_scope()
+        for param in (node.params or []):
+            if isinstance(param, Param_Node):
+                p_type = get_type_name(param.type) if param.type else 'any'
+                symtab.add(param.ident, p_type)
+        check(node.body, symtab)
+        symtab.pop_scope()
+        return 'function'
+
+        
+
