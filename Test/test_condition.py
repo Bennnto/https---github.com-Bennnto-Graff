@@ -35,3 +35,13 @@ if __name__ == "__main__":
     # Test 4: While loop check
     test_case("let count = 0; while count < 5 { count = count + 1; }", "count", 5)
     test_case("let sum = 0; let i = 1; while i <= 4 { sum = sum + i; i = i + 1; }", "sum", 10)
+
+    test_case("""
+    let y = 0
+    let x = 5
+    match(x):
+        case(2): { y = 5 }
+        case(3): { y = 5 } 
+        case(5): { y = 10 }
+        case(_): { y = 100 } 
+    """, "y", 10)
