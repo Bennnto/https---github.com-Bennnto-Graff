@@ -573,11 +573,16 @@ def p_attempt_stmt(p):
     elif len(p) == 7:
         p[0] = Attempt_Node(retry=p[3], attempt_block=p[6], fallback_block=None)
 
+# Lambda as expression
+def p_expression_from_lambda(p):
+    '''expression : lambda_expr'''
+    p[0] = p[1]
+
 # Lambda Function 
 def p_lambda_expr(p):
-    '''lambda_expr : LAMBDA LPAREN params RPAREN COLON type ARROW expression
-                   | LAMBDA LPAREN params RPAREN ARROW expression
-                   | LAMBDA LPAREN RPAREN ARROW expression'''
+    '''lambda_expr : LAMBDA LPAREN params RPAREN COLON type THIN_ARROW expression
+                   | LAMBDA LPAREN params RPAREN THIN_ARROW expression
+                   | LAMBDA LPAREN RPAREN THIN_ARROW expression'''
     if len(p) == 9:
         p[0] = Lambda_Node(params=p[3], return_type=p[6], body=p[8])
     elif len(p) == 7:

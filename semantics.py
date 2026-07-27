@@ -236,6 +236,9 @@ def check(node, symtab):
     
     if isinstance(node, Call_Node):
         func_symbol = symtab.get(node.ident)
+        # Lambda-typed variables: allow calling without strict param checking
+        if func_symbol == 'function':
+            return 'any'
         if not isinstance(func_symbol, FunctionSymbol):
             raise TypeError(f"Error : {node.ident} is not a function")
         args = node.parameter if node.parameter else []
@@ -383,8 +386,12 @@ def check(node, symtab):
     if isinstance(node, Lambda_Node):
         symtab.push_scope()
         for param in node.params:
-            if isinstance(param, Param_Node) and param.type_node:
-                symtab.add(param.name, param.type_node)
+            if isinstance(param, Param_Node):
+                if param.type:
+                    type_str = param.type.type if hasattr(param.type, 'type') else param.type
+                else:
+                    type_str = 'any'
+                symtab.add(param.ident, type_str)
         body_type = check(node.body, symtab)
         symtab.pop_scope()
         return 'function'

@@ -250,14 +250,14 @@ def eval_ast(node, env, in_loop=False):
         return None 
     
     elif isinstance(node, Call_Node):
-
-        if callable(func):
-            eval_args = [eval_ast(arg, env, in_loop) for arg in (node.args or [])]
-            return func(*eval_args)
-
         if node.ident not in env:
             raise RuntimeError(f"Error: Function {node.ident} not defined")
         func = env[node.ident]
+
+        if callable(func):
+            eval_args = [eval_ast(arg, env, in_loop) for arg in (node.parameter or [])]
+            return func(*eval_args)
+
         if not isinstance(func, Function_Node):
             raise RuntimeError(f"Error: {node.ident} is not a function")
         
@@ -431,9 +431,9 @@ def eval_ast(node, env, in_loop=False):
             local_env = Environment(parent=capture_env)
             params = node.params if node.params else []
             for i, param in enumerate(params):
-                param_name = param.name if hasattr(param, 'name') else param
+                param_name = param.ident if hasattr(param, 'ident') else param
 
-                local_env.set(param_name, args[1])
+                local_env.set(param_name, args[i])
             return eval_ast(node.body, local_env, in_loop)
         return lambda_func      
 

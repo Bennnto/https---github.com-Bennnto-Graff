@@ -7,13 +7,14 @@ from lexicals import lexer
 from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
+from environment import Environment
 
 def test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
     inferrer.infer_program(ast)
-    env = {}
+    env = Environment()
     for stmt in ast:
         eval_ast(stmt, env)
     
@@ -24,30 +25,30 @@ def test_case(code, var_name, expected_val):
     print(f"Passed : '{var_name}' == {expected_val}")
 
 if __name__ == "__main__":
-    # Single-arg lambda with full annotations
+    # Test 1: single-arg lambda with type annotations
     code1 = """
-    let y = lambda (x:int): int => x + 3
-    let z = y(5)
+    let y = lambda (x:int): int -> x + 3;
+    let z = y(5);
     """
     test_case(code1, "z", 8)
 
-    # Single-arg lambda without return-type annotation
+    # Test 2: single-arg lambda without return-type annotation
     code2 = """
-    let doubler = lambda (n) => n * 2
-    let r = doubler(15)
+    let doubler = lambda (n) -> n * 2;
+    let r = doubler(15);
     """
     test_case(code2, "r", 30)
 
-    # Multi-arg lambda (verifies args[i], not the buggy args[1])
+    # Test 3: multi-arg lambda
     code3 = """
-    let add = lambda (x, y) => x + y
-    let s = add(6, 7)
+    let add = lambda (x, y) -> x + y;
+    let s = add(6, 7);
     """
     test_case(code3, "s", 13)
 
-    # No-parameter lambda
+    # Test 4: no-parameter lambda
     code4 = """
-    let fortytwo = lambda () => 42
-    let n = fortytwo()
+    let fortytwo = lambda () -> 42;
+    let n = fortytwo();
     """
     test_case(code4, "n", 42)

@@ -74,6 +74,7 @@ tokens = (
     'FALLBACK',
     'ATTEMPT',
     'ARROW',
+    'THIN_ARROW',
     'LAMBDA',
     'MOVE',
     'BOX',
@@ -146,6 +147,7 @@ t_AND = r'&'
 t_COMMA = r','
 t_DOT = r'\.'
 t_ARROW = r'=>'
+t_THIN_ARROW = r'->'
 t_MUT_REF = r'\*'
 
 def t_OK_CHECK(t):
