@@ -1,9 +1,9 @@
 from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, Variable_Node,
-                   SingleOps_Node, Disp_Node, Entry_Node, If_Else_Node, While_Node, Return_Node, Function_Node,
+                   SingleOps_Node, Disp_Node, Entry_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node,
-                   Deref_Assign_Node, Fstr_Node)
+                   Deref_Assign_Node, Fstr_Node, Match_Node, Case_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -183,18 +183,6 @@ def check(node, symtab):
         if node.expr:
             check(node.expr, symtab)
         return 'str'
-    
-    if isinstance(node, If_Else_Node):
-        condition_type = check(node.condition, symtab)
-        if condition_type != 'bool':
-            raise TypeError(f"Error : Expected boolean type for condition")
-        for stmt in node.if_block:
-            check(stmt, symtab)
-        
-        if node.else_block:
-            for stmt in node.else_block:
-                check(stmt, symtab)
-        return None 
     
     if isinstance(node, While_Node):
         condition_type = check(node.condition, symtab)
@@ -430,6 +418,21 @@ def check(node, symtab):
 
     if isinstance(node, Fstr_Node):
         return 'str'
+
+
+    if isinstance(node, Match_Node):
+        target_type = check(node.target, symtab)
+        for case in node.cases:
+            is_wildcard = isinstance(case.pattern, Variable_Node) and case.pattern.ident == '_'
+            if not is_wildcard:
+                pattern_type = check(case.pattern, symtab)
+                if target_type != 'any' and pattern_type != 'any' and target_type != pattern_type:
+                    raise TypeError(f"Error : Case type {pattern_type} does not match target type {target_type}")
+            symtab.push_scope()
+            for stmt in case.body:
+                check(stmt, symtab)
+            symtab.pop_scope()
+        return None
 
 
     

@@ -37,7 +37,7 @@ if __name__ == "__main__":
     try :
         assert 2 + 2 == 5, "Math assertion failed!";
     ok? :
-        if !is_ok {
+        match (!is_ok) : case (true) : {
             caught_msg = err;
         }
     '''

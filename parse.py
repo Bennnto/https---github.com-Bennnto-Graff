@@ -80,12 +80,7 @@ class Disp_Node(Node):
 class Entry_Node(Node):
     expr : Optional[Node]
     
-@dataclass
-class If_Else_Node(Node):
-    condition : Node
-    if_block : List[Node]
-    else_block : Optional[List[Node]]
-    
+
 @dataclass
 class While_Node(Node):
     condition : Node
@@ -221,6 +216,16 @@ class Deref_Assign_Node(Node):
 @dataclass
 class Fstr_Node(Node):
     raw : str
+
+@dataclass 
+class Case_Node(Node):
+    pattern : Node
+    body : List[Node]
+
+@dataclass 
+class Match_Node(Node):
+    target : Node
+    cases : List[Case_Node]
     
 
 # Programs and Statements
@@ -235,7 +240,7 @@ def p_statement(p):
                  | statement_index_assign
                  | disp_stmt
                  | entry_stmt
-                 | If_Else_stmt
+                 | match_stmt
                  | while_stmt
                  | block
                  | function_stmt
@@ -311,19 +316,11 @@ def p_variable(p):
     else :
         p[0] = Variable_Node(p[1])
         
-# IF ELSE 
+# Block
 
 def p_block(p):
     '''block : LBRACE statements RBRACE'''
     p[0] = p[2]
-
-def p_If_Else_stmt(p):
-    '''If_Else_stmt : IF expression block
-                    | IF expression block ELSE block'''
-    if len(p) == 4:
-        p[0] = If_Else_Node(condition=p[2], if_block=p[3], else_block=None)
-    elif len(p) == 6:
-        p[0] = If_Else_Node(condition=p[2], if_block=p[3], else_block=p[5])
 
 # While 
 
@@ -616,10 +613,30 @@ def p_statement_deref_assign(p):
     '''deref_assign_stmt : GT ID LT ASSIGN expression optional_semicolon'''
     p[0] = Deref_Assign_Node(target=Variable_Node(ident=p[2]), value=p[5])
 
+# String Interpolation 
 
 def p_expression_fstr(p):
     '''expression : FSTR'''
     p[0] = Fstr_Node(raw=p[1])
+
+# Match Case
+
+def p_case(p):
+    '''case : CASE LPAREN expression RPAREN COLON block'''
+    p[0] = Case_Node(pattern=p[3], body=p[6])
+
+def p_cases(p):
+    '''cases : case 
+             | cases case'''
+    if len(p) == 2:
+        p[0] = [p[1]]
+    elif len(p) == 3:
+        p[0] = p[1] + [p[2]]
+
+def p_match_stmt(p):
+    '''match_stmt : MATCH LPAREN expression RPAREN COLON cases'''
+    p[0] = Match_Node(target=p[3], cases=p[6])
+
 
 # Helper
 

@@ -1,11 +1,10 @@
 from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, 
                    SingleOps_Node, Variable_Node, Bool_Node, Disp_Node, Entry_Node,
-                   If_Else_Node, Break_Exception, Continue_Exception, While_Node,
-                   Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
+                   Break_Exception, Continue_Exception, While_Node, Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node,
-                   Fstr_Node)
+                   Fstr_Node, Case_Node, Match_Node)
 from environment import Environment
 import re
 from lexicals import lexer
@@ -196,22 +195,6 @@ def eval_ast(node, env, in_loop=False):
     elif isinstance(node, Entry_Node):
         expression = eval_ast(node.expr, env, in_loop=in_loop) if node.expr else ""
         return input(expression)
-       
-    elif isinstance(node, If_Else_Node):
-        condition = eval_ast(node.condition, env, in_loop=in_loop)
-        block_env = Environment(parent=env)
-        if condition:
-            result = None
-            for stmt in node.if_block:
-                result = eval_ast(stmt, block_env, in_loop=in_loop)
-            return result
-        else:
-            if node.else_block:
-                result = None
-                for stmt in node.else_block:
-                    result = eval_ast(stmt, block_env, in_loop=in_loop)
-                return result 
-            return None
     
     elif isinstance(node, While_Node):
         result = None
@@ -498,6 +481,16 @@ def eval_ast(node, env, in_loop=False):
             last_end = match.end()
         result += raw[last_end:]
         return result 
-        
 
-                        
+
+    elif isinstance(node, Match_Node):
+        target_val = eval_ast(node.target, env, in_loop=in_loop)
+        for case in node.cases :
+            is_wildcard = isinstance(case.pattern, Variable_Node) and case.pattern.ident == "_"
+            if is_wildcard or eval_ast(case.pattern, env, in_loop=in_loop) == target_val :
+                block_env = Environment(parent=env)
+                result = None
+                for stmt in case.body :
+                    result = eval_ast(stmt, block_env, in_loop=in_loop)
+                return result 
+        return None

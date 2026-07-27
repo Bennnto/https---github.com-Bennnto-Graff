@@ -59,8 +59,6 @@ tokens = (
     'LET',
     'DISP',
     'ENTRY',
-    'IF',
-    'ELSE',
     'WHILE',
     'BREAK',
     'CONT',
@@ -82,6 +80,8 @@ tokens = (
     'REF',
     'DEREF',
     'MUT_REF',
+    'MATCH',
+    'CASE',
 )
 
 reserved_keys = {
@@ -93,8 +93,6 @@ reserved_keys = {
     'let' : 'LET',
     'disp' : 'DISP',
     'entry': 'ENTRY',
-    'if' : 'IF',
-    'else' : 'ELSE',
     'while': 'WHILE',
     'break' : 'BREAK',
     'cont' : 'CONT',
@@ -117,7 +115,8 @@ reserved_keys = {
     'move' : 'MOVE',
     'ref' : 'REF',
     'deref': 'DEREF',
-
+    'match' : 'MATCH',
+    'case' : 'CASE',
 }
 
 t_EQ = r'=='   

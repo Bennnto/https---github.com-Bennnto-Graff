@@ -30,7 +30,7 @@ if __name__ == "__main__":
     let status = "";
     attempt(3) : {
         count = count + 1;
-        if count < 2 {
+        match (count < 2) : case (true) : {
             throw "Error on first attempt!";
         }
         status = "Success on attempt 2";

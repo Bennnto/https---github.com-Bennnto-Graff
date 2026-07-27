@@ -23,7 +23,7 @@ def test_case(code, var_name, expected_val):
     print(f"Passed : '{var_name}' == {expected_val}")
 
 if __name__ == "__main__":
-    test_case("let res = 0; if 10 > 5 { res = 1; } else { res = 2; }", "res", 1)
-    test_case("let res = 0; if 2 > 5 { res = 1; } else { res = 2; }", "res", 2)
+    test_case("let res = 0; match (10 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 1)
+    test_case("let res = 0; match (2 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 2)
     test_case("let count = 0; while count < 5 { count = count + 1; }", "count", 5)
     test_case("let sum = 0; let i = 1; while i <= 4 { sum = sum + i; i = i + 1; }", "sum", 10)

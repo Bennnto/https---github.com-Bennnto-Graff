@@ -29,11 +29,11 @@ if __name__ == "__main__":
     let msg = "";
     try : {
         let age = -5;
-        if age < 0 {
+        match (age < 0) : case (true) : {
             throw "Age cannot be negative!";
         }
     } ok? [is_ok, err]: {
-        if !is_ok {
+        match (!is_ok) : case (true) : {
             msg = err;
         }
     }
@@ -45,11 +45,11 @@ if __name__ == "__main__":
     let out = "";
     try :
         let x = 100;
-        if x < 100 {
+        match (x < 100) : case (true) : {
             throw "error message print";
         }
     ok? [ok] :
-        if ok {
+        match (ok) : case (true) : {
             out = "Success!";
         }
     '''
@@ -60,11 +60,11 @@ if __name__ == "__main__":
     let msg3 = "";
     try : 
         let age = -10;
-        if age < 0 {
+        match (age < 0) : case (true) : {
             throw "Unbraced age error!";
         }
     ok? :
-        if !is_ok {
+        match (!is_ok) : case (true) : {
             msg3 = err;
         }
     '''
@@ -74,11 +74,11 @@ if __name__ == "__main__":
     let msg4 = "";
     try : 
         let age = -10;
-        if age < 0 {
+        match (age < 0) : case (true) : {
             throw "Unbraced 2-param error!";
         }
     ok? [is_ok, err] :
-        if !is_ok {
+        match (!is_ok) : case (true) : {
             msg4 = err;
         }
     '''
