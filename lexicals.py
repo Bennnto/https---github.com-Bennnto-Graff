@@ -75,6 +75,11 @@ tokens = (
     'ATTEMPT',
     'ARROW',
     'LAMBDA',
+    'MOVE',
+    'BOX',
+    'REF',
+    'DEREF',
+    'MUT_REF',
 )
 
 reserved_keys = {
@@ -106,6 +111,10 @@ reserved_keys = {
     'attempt' : 'ATTEMPT',
     'fallback' : 'FALLBACK',
     'lambda' : 'LAMBDA',
+    'box' : 'BOX',
+    'move' : 'MOVE',
+    'ref' : 'REF',
+    'deref': 'DEREF',
 
 }
 
@@ -137,6 +146,7 @@ t_AND = r'&'
 t_COMMA = r','
 t_DOT = r'\.'
 t_ARROW = r'=>'
+t_MUT_REF = r'\*'
 
 def t_OK_CHECK(t):
     r'ok\?'
@@ -169,6 +179,9 @@ def t_BOOL(t):
     t.value = t.value == 'true'
     return t
 
+def t_COMMENT(t):
+    r'\#'
+    pass
 def t_NEWLINE(t):
     r'\n'
     t.lexer.lineno += len(t.value)

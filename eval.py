@@ -4,8 +4,21 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
-                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node)
+                   Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node
+                   )
 from environment import Environment
+
+class HeapPointer:
+    def __init__(self, address):
+        self.address = address
+
+class RefPointer:
+    def __init__(self, var_name, is_mutable=False):
+        self.var_name = var_name
+        self.is_mutable = is_mutable
+
+heap_store = {}
+heap_next_addr = 0x1000
 
 class VelnException(Exception):
     def __init__(self, message):
@@ -237,18 +250,17 @@ def eval_ast(node, env, in_loop=False):
         return None 
     
     elif isinstance(node, Call_Node):
+
+        if callable(func):
+            eval_args = [eval_ast(arg, env, in_loop) for arg in (node.args or [])]
+            return func(*eval_args)
+
         if node.ident not in env:
             raise RuntimeError(f"Error: Function {node.ident} not defined")
         func = env[node.ident]
-        args = node.parameter if node.parameter else []
-
-        if callable(func):
-            eval_args = [eval_ast(arg, env, in_loop=in_loop) for arg in args]
-            return func(*eval_args)
-
         if not isinstance(func, Function_Node):
             raise RuntimeError(f"Error: {node.ident} is not a function")
-
+        
         args = node.parameter if node.parameter else []
         eval_args = [eval_ast(arg, env, in_loop=in_loop) for arg in args]
         params = func.parameter if func.parameter else []
@@ -419,12 +431,50 @@ def eval_ast(node, env, in_loop=False):
             local_env = Environment(parent=capture_env)
             params = node.params if node.params else []
             for i, param in enumerate(params):
-                param_name = param.ident if hasattr(param, 'ident') else param
-                local_env.set(param_name, args[i])
-            return eval_ast(node.body, local_env, in_loop=in_loop)
-        return lambda_func
+                param_name = param.name if hasattr(param, 'name') else param
 
+                local_env.set(param_name, args[1])
+            return eval_ast(node.body, local_env, in_loop)
+        return lambda_func      
 
-            
+    elif isinstance(node, Box_Node):
+        val = eval_ast(node.expr, env, in_loop)
+        global heap_next_addr
+        addr = heap_next_addr
+        heap_store[addr] = val
+        heap_next_addr += 4
+        return HeapPointer(addr)
+
+    elif isinstance(node, Move_Node):
+        val = env.get(node.var_name)
+        if val == "MOVED":
+            raise VelnException(f"UserAfterMoveError: Cannot use moved variable '{node.var_name}'")
+        env.set(node.var_name, "MOVED")
+        return val
+
+    elif isinstance(node, Ref_Node):
+        return RefPointer(node.var_name, is_mutable=node.is_mutable)
+
+    elif isinstance(node, Deref_Node):
+        target = eval_ast(node.expr, env, in_loop)
+        if isinstance(target, RefPointer):
+            val = env.get(target.var_name)
+            if val == "MOVED":
+                raise VelnException(f"UseAfterMoveError: Cannot dereference moved variable '{target.var_name}'")
+            return val
+        elif isinstance(target, HeapPointer):
+            return heap_store.get(target.address)
+        return target
+
+    elif isinstance(node, Deref_Assign_Node):
+        target_ref = eval_ast(node.target, env, in_loop)
+        val = eval_ast(node.value, env, in_loop)
+        if isinstance(target_ref, RefPointer):
+            if not target_ref.is_mutable:
+                raise VelnException(f"Error : Cannot mutate through immutable reference to '{target_ref.var_name}'")
+            env.set(target_ref.var_name, val)
+        elif isinstance(target_ref, HeapPointer):
+            heap_store[target_ref.address] = val
+        return val
 
                 

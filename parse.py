@@ -196,6 +196,29 @@ class Lambda_Node(Node):
     return_type : Any
     body : Node
 
+@dataclass
+class Box_Node(Node):
+    expr : Node
+
+@dataclass
+class Move_Node(Node):
+    var_name : str
+
+@dataclass
+class Ref_Node(Node):
+    var_name : str
+    is_mutable : bool
+
+@dataclass
+class Deref_Node(Node):
+    expr : None
+
+@dataclass
+class Deref_Assign_Node(Node):
+    target : Node
+    value : Node
+    
+
 # Programs and Statements
 
 def p_program(p):
@@ -221,7 +244,8 @@ def p_statement(p):
                  | throw_stmt
                  | assert_stmt
                  | assert_eq_stmt
-                 | attempt_stmt'''
+                 | attempt_stmt
+                 | deref_assign_stmt'''
     p[0] = p[1]
     
 def p_statements(p):
@@ -454,9 +478,12 @@ def p_type_hash(p):
 def p_assign_stmt(p):
     '''assign_stmt : LET ID COLON type ASSIGN expression optional_semicolon
                    | LET ID ASSIGN expression optional_semicolon
-                   | ID ASSIGN expression optional_semicolon'''
+                   | ID ASSIGN expression optional_semicolon
+                   | LET ID COLON type lambda_expr optional_semicolon'''
     if len(p) == 8:
         p[0] = Assign_Node(ident=p[2], type=p[4], value=p[6])
+    elif len(p) == 7:
+        p[0] = Assign_Node(ident=p[2], type=p[4], value=p[5])
     elif len(p) == 6:
         p[0] = Assign_Node(ident=p[2], type=None, value=p[4])
     else : 
@@ -548,15 +575,38 @@ def p_attempt_stmt(p):
 
 # Lambda Function 
 def p_lambda_expr(p):
-    '''expression : LAMBDA LPAREN params RPAREN COLON type ARROW expression
-                  | LAMBDA LPAREN params RPAREN ARROW expression
-                  | LAMBDA LPAREN RPAREN ARROW expression'''
+    '''lambda_expr : LAMBDA LPAREN params RPAREN COLON type ARROW expression
+                   | LAMBDA LPAREN params RPAREN ARROW expression
+                   | LAMBDA LPAREN RPAREN ARROW expression'''
     if len(p) == 9:
         p[0] = Lambda_Node(params=p[3], return_type=p[6], body=p[8])
     elif len(p) == 7:
         p[0] = Lambda_Node(params=p[3], return_type=None, body=p[6])
     else:
         p[0] = Lambda_Node(params=[], return_type=None, body=p[5])
+
+# Memory
+def p_expression_memory(p):
+    '''expression : BOX LPAREN expression RPAREN
+                  | MOVE ID
+                  | LT ID GT
+                  | MUL LT ID GT
+                  | GT ID LT'''
+    if p[1] == 'box':
+        p[0] = Box_Node(expr=p[3])
+    elif p[1] == 'move':
+        p[0] = Move_Node(var_name=p[2])
+    elif len(p) == 4 and p[1] == '<':
+        p[0] = Ref_Node(var_name=p[2], is_mutable=False)
+    elif len(p) == 5 and p[1] == '*':
+        p[0] = Ref_Node(var_name=p[3], is_mutable=True)
+    elif len(p) == 4 and p[1] == '>':
+        p[0] = Deref_Node(expr=Variable_Node(ident=p[2]))
+
+def p_statement_deref_assign(p):
+    '''deref_assign_stmt : GT ID LT ASSIGN expression optional_semicolon'''
+    p[0] = Deref_Assign_Node(target=Variable_Node(ident=p[2]), value=p[5])
+
 # Helper
 
 def p_empty(p):
