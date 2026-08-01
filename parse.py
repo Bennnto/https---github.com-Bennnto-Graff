@@ -4,6 +4,8 @@ from typing import Optional, List, Any
 from dataclasses import dataclass
 
 precedence = (
+    ('left', 'OR'),
+    ('left', 'AND'),
     ('left', 'EQ', 'NE'),
     ('left', 'LT', 'GT', 'LE', 'GE'),
     ('left', 'ADD', 'SUB'),
@@ -12,6 +14,7 @@ precedence = (
     ('right', 'NOT'),
     ('right', 'LPAREN'),
     ('right', 'Uminus'),
+    ('left', 'DOT', 'LBRACKET'),
 )
 
 class Node():
@@ -30,7 +33,7 @@ class Continue_Exception(Exception):
 @dataclass
 class Int_Node(Node):
     value : int
-    
+
 @dataclass
 class Str_Node(Node):
     value : str
@@ -38,55 +41,55 @@ class Str_Node(Node):
 @dataclass
 class Bool_Node(Node):
     value : bool
-    
-@dataclass 
+
+@dataclass
 class Float_Node(Node):
     value : float
 
-@dataclass 
+@dataclass
 class Void_Node(Node):
     pass
 
-@dataclass    
+@dataclass
 class BinOps_Node(Node):
     left : Node
     right : Node
     ops : str
 
-@dataclass    
+@dataclass
 class Type_Node(Node):
     type : str
-    
+
 @dataclass
 class Assign_Node(Node):
     ident : str
     type : Optional[Type_Node]
     value : Node
-    
+
 @dataclass
 class SingleOps_Node(Node):
     right : Node
     ops : str
-    
-@dataclass 
+
+@dataclass
 class Variable_Node(Node):
-    ident : str 
-    
+    ident : str
+
 @dataclass
 class Disp_Node(Node):
     expr : Node
-    
+
 @dataclass
 class Entry_Node(Node):
     expr : Optional[Node]
-    
+
 
 @dataclass
 class While_Node(Node):
     condition : Node
     while_block : List[Node]
-        
-@dataclass 
+
+@dataclass
 class Continue_Node(Node):
     pass
 
@@ -103,7 +106,7 @@ class Param_Node(Node):
     ident : str
     type : Optional[Type_Node]
     value : Optional[Node]
-    
+
 @dataclass
 class Function_Node(Node):
     ident : str
@@ -115,7 +118,7 @@ class Function_Node(Node):
 class Call_Node(Node):
     ident : str
     parameter : Optional[List[Node]]
-    
+
 @dataclass
 class For_Node(Node):
     init : Optional[Node]
@@ -132,13 +135,13 @@ class Index_Node(Node):
     target : Node
     index : Node
 
-@dataclass 
+@dataclass
 class Index_Assign_Node(Node):
     target : Node
     index : Node
     value : Node
 
-@dataclass 
+@dataclass
 class Method_Call_Node(Node):
     target : Node
     method : str
@@ -154,10 +157,10 @@ class Hash_Node(Node):
     elements : List[tuple[Node, Node]]
 
 @dataclass
-class Hash_Type_Node(Node): 
+class Hash_Type_Node(Node):
     key_type : Node
     value_type : Node
-    
+
 @dataclass
 class Throw_Node(Node):
     expr : Node
@@ -168,7 +171,7 @@ class Try_Ok_Node(Node):
     is_ok_ident : str
     err_ident : str
     ok_block : Any
-    
+
 @dataclass
 class Assert_Node(Node):
     condition : Node
@@ -217,23 +220,50 @@ class Deref_Assign_Node(Node):
 class Fstr_Node(Node):
     raw : str
 
-@dataclass 
+@dataclass
 class Case_Node(Node):
     pattern : Node
     body : List[Node]
 
-@dataclass 
+@dataclass
 class Match_Node(Node):
     target : Node
     cases : List[Case_Node]
-    
+
+@dataclass
+class Ternary_Node(Node):
+    condition : Node
+    true_block : Node
+    false_block : Node
+
+@dataclass
+class Timeline_Decl(Node):
+    ident : str
+    type : Node
+    value : Node
+
+@dataclass
+class Timeline_Index_Node(Node):
+    index : Node
+    target : Node
+
+@dataclass
+class Timeline_Rollback_Node(Node):
+    ident : str
+    type : Optional[Node] = None
+    index : Optional[Node] = None
+
+@dataclass
+class Enum_Node(Node):
+    name : str
+    members : List[Node]
 
 # Programs and Statements
 
 def p_program(p):
     '''program : statements'''
     p[0] = p[1]
-    
+
 def p_statement(p):
     '''statement : expression optional_semicolon
                  | assign_stmt
@@ -254,9 +284,11 @@ def p_statement(p):
                  | assert_stmt
                  | assert_eq_stmt
                  | attempt_stmt
-                 | deref_assign_stmt'''
+                 | deref_assign_stmt
+                 | timeline_stmt
+                 | rollback_stmt'''
     p[0] = p[1]
-    
+
 def p_statements(p):
     '''statements : statement
                   | statements statement'''
@@ -264,11 +296,11 @@ def p_statements(p):
         p[0] = [p[1]] if p[1] is not None else []
     else:
         p[0] = p[1] + ([p[2]] if p[2] is not None else [])
-        
+
 def p_statement_empty(p):
     '''statement : empty'''
     p[0] = None
-    
+
 # User I/O statement display | entry
 
 def p_disp_stmt(p):
@@ -282,7 +314,7 @@ def p_entry_stmt(p):
         p[0] = Entry_Node(expr=None)
     else :
         p[0] = Entry_Node(expr=p[3])
-    
+
 # Expression
 
 def p_expression_variable(p):
@@ -296,7 +328,7 @@ def p_expression_binops(p):
 def p_expression_paren(p):
     '''expression : LPAREN expression RPAREN'''
     p[0] = p[2]
-    
+
 # Variable
 
 def p_variable(p):
@@ -315,20 +347,20 @@ def p_variable(p):
         p[0] = Float_Node(p[1])
     else :
         p[0] = Variable_Node(p[1])
-        
+
 # Block
 
 def p_block(p):
     '''block : LBRACE statements RBRACE'''
     p[0] = p[2]
 
-# While 
+# While
 
 def p_while_stmt(p):
     '''while_stmt : WHILE expression block'''
     p[0] = While_Node(condition=p[2], while_block=p[3])
 
-# For 
+# For
 
 def p_for_stmt(p):
     '''for_stmt : FOR LPAREN statement expression SEMICOLON statement RPAREN block
@@ -337,13 +369,13 @@ def p_for_stmt(p):
         p[0] = For_Node(init=p[3], condition=p[4], update=p[6], for_block=p[8])
     else :
         p[0] = For_Node(init=None, condition=p[2], update=None, for_block=p[3])
-        
+
 # Continue & Break
 
 def p_continue_stmt(p):
     '''continue_stmt : CONT optional_semicolon'''
     p[0] = Continue_Node()
-    
+
 def p_break_stmt(p):
     '''break_stmt : BREAK optional_semicolon'''
     p[0] = Break_Node()
@@ -354,10 +386,10 @@ def p_return_stmt(p):
     '''return_stmt : RETURN expression optional_semicolon
                    | RETURN optional_semicolon'''
     if len(p) == 4:
-        p[0] = Return_Node(expr=p[2]) 
+        p[0] = Return_Node(expr=p[2])
     else :
         p[0] = Return_Node(expr=None)
-        
+
 # Single Operations
 
 def p_single_ops_expr(p):
@@ -379,7 +411,7 @@ def p_param(p):
     elif len(p) == 4 and p[2] == '=':
         p[0] = Param_Node(ident=p[1], type=None, value=p[3])
     else :
-        p[0] = Param_Node(ident=p[1], type=None, value=None)   
+        p[0] = Param_Node(ident=p[1], type=None, value=None)
 
 def p_params(p):
     '''params : param
@@ -388,12 +420,12 @@ def p_params(p):
         p[0] = p[1] + [p[3]]
     else:
         p[0] = [p[1]]
-        
+
 def p_param_list(p):
     '''param_list : LBRACKET params RBRACKET
                   | LBRACKET empty RBRACKET'''
     p[0] = p[2]
-    
+
 def p_function_stmt(p):
     '''function_stmt : FUNCTION ID COLON type param_list COLON block
                      | FUNCTION ID param_list COLON block'''
@@ -401,7 +433,7 @@ def p_function_stmt(p):
         p[0] = Function_Node(ident=p[2], re_type=p[4], parameter=p[5], body=p[7])
     else :
         p[0] = Function_Node(ident=p[2], re_type=None, parameter=p[3], body=p[5])
-        
+
 
 def p_args(p):
     '''args : expression
@@ -465,15 +497,15 @@ def p_type_array(p):
         p[0] = Array_Type_Node(elem_type=p[1], length=p[4])
     else:
         p[0] = Array_Type_Node(elem_type=p[1], length=None)
-    
+
 def p_type_hash(p):
     '''type_hash : HASH_TYPE LBRACKET type COMMA type RBRACKET
                  | HASH_TYPE'''
     if len(p) == 7 :
-        p[0] = Hash_Type_Node(key_type=p[3], value_type=p[5])    
+        p[0] = Hash_Type_Node(key_type=p[3], value_type=p[5])
     else :
         p[0] = Hash_Type_Node(key_type=None, value_type=None)
-        
+
 # Assign
 
 def p_assign_stmt(p):
@@ -487,15 +519,15 @@ def p_assign_stmt(p):
         p[0] = Assign_Node(ident=p[2], type=p[4], value=p[5])
     elif len(p) == 6:
         p[0] = Assign_Node(ident=p[2], type=None, value=p[4])
-    else : 
+    else :
         p[0] = Assign_Node(ident=p[1], type=None, value=p[3])
 
-# List 
+# List
 
 def p_expression_array(p):
     '''expression : LBRACKET args RBRACKET
                   | LBRACKET empty RBRACKET'''
-    
+
     p[0] = Array_Node(elements=p[2])
 
 def p_expression_index(p):
@@ -505,6 +537,10 @@ def p_expression_index(p):
 def p_statement_index_assign(p):
     '''statement_index_assign : expression LBRACKET expression RBRACKET ASSIGN expression optional_semicolon'''
     p[0] = Index_Assign_Node(target=p[1], index=p[3], value=p[6])
+
+def p_expression_dot(p):
+    '''expression : expression DOT ID'''
+    p[0] = Index_Node(target=p[1], index=Str_Node(value=p[3]))
 
 def p_expression_method_call(p):
     '''expression : expression DOT ID LPAREN arg_list RPAREN'''
@@ -525,7 +561,7 @@ def p_hash_elements(p):
     '''hash_elements : hash_element
                      | hash_elements COMMA hash_element'''
     if len(p) == 2:
-        p[0] = [p[1]]   
+        p[0] = [p[1]]
     else:
         p[0] = p[1] + [p[3]]
 
@@ -562,7 +598,7 @@ def p_assert_stmt(p):
 def p_assert_eq_stmt(p):
     '''assert_eq_stmt : ASSERT_EQ expression COMMA expression optional_semicolon'''
     p[0] = Assert_Eq_Node(actual=p[2], expected=p[4])
-    
+
 # Attempt / Fallback
 def p_attempt_stmt(p):
     '''attempt_stmt : ATTEMPT LPAREN expression RPAREN COLON block FALLBACK COLON block
@@ -579,7 +615,7 @@ def p_expression_from_lambda(p):
     '''expression : lambda_expr'''
     p[0] = p[1]
 
-# Lambda Function 
+# Lambda Function
 def p_lambda_expr(p):
     '''lambda_expr : LAMBDA LPAREN params RPAREN COLON type THIN_ARROW expression
                    | LAMBDA LPAREN params RPAREN THIN_ARROW expression
@@ -613,7 +649,7 @@ def p_statement_deref_assign(p):
     '''deref_assign_stmt : GT ID LT ASSIGN expression optional_semicolon'''
     p[0] = Deref_Assign_Node(target=Variable_Node(ident=p[2]), value=p[5])
 
-# String Interpolation 
+# String Interpolation
 
 def p_expression_fstr(p):
     '''expression : FSTR'''
@@ -626,7 +662,7 @@ def p_case(p):
     p[0] = Case_Node(pattern=p[3], body=p[6])
 
 def p_cases(p):
-    '''cases : case 
+    '''cases : case
              | cases case'''
     if len(p) == 2:
         p[0] = [p[1]]
@@ -637,13 +673,63 @@ def p_match_stmt(p):
     '''match_stmt : MATCH LPAREN expression RPAREN COLON cases'''
     p[0] = Match_Node(target=p[3], cases=p[6])
 
+# Ternary Operator
+
+def p_expression_ternary(p):
+    '''expression : expression TERNARY expression COLON expression'''
+    p[0] = Ternary_Node(condition=p[1], true_block=p[3], false_block=p[5])
+
+# HISTORY
+
+def p_timeline_stmt(p):
+    '''timeline_stmt : LET TIMELINE ID COLON type ASSIGN expression optional_semicolon
+                     | LET TIMELINE ID ASSIGN expression optional_semicolon'''
+    if len(p) == 9:
+        p[0] = Timeline_Decl(ident=p[3], type=p[5], value=p[7])
+    else:
+        p[0] = Timeline_Decl(ident=p[3], type=None, value=p[5])
+
+def p_expression_timeline_index(p):
+    '''expression : expression AT expression'''
+    p[0] = Timeline_Index_Node(index=p[3], target=p[1])
+
+def p_timeline_rollback(p):
+    '''rollback_stmt : ROLLBACK ID AT expression optional_semicolon'''
+    p[0] = Timeline_Rollback_Node(ident=p[2], index=p[4])
+
+# Enum
+
+def p_enum_stmt(p):
+    '''statement : ENUM ID COLON enum_body optional_semicolon'''
+    p[0] = Enum_Node(name=p[2], members=p[4])
+
+def p_enum_body(p):
+    '''enum_body : enum_member_list
+                 | enum_member_list COMMA'''
+    p[0] = p[1]
+
+def p_enum_member_list(p):
+    '''enum_member_list : enum_member
+                        | enum_member_list enum_member'''
+    if len(p) == 3 :
+        p[0] = p[1] + [p[2]]
+    else:
+        p[0] = [p[1]]
+
+def p_enum_member(p):
+    '''enum_member : ID
+                   | ID ASSIGN expression'''
+    if len(p) == 2 :
+        p[0] = (p[1], None)
+    else:
+        p[0] = (p[1], p[3])
 
 # Helper
 
 def p_empty(p):
     '''empty : '''
     p[0] = []
-    
+
 def p_optional_semicolon(p):
     '''optional_semicolon : SEMICOLON
                           | empty'''
@@ -654,7 +740,7 @@ def p_error(p):
         print(f"Syntax Error at token '{p.value}' line {p.lineno}, position {p.lexpos}")
     else:
         print("Unexpected end of input EOF")
-        
+
 parser = yacc.yacc()
 if __name__ == "__main__":
     data = """let x:int = 5;

@@ -3,7 +3,8 @@ from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node,
-                   Deref_Assign_Node, Fstr_Node, Match_Node, Case_Node)
+                   Deref_Assign_Node, Fstr_Node, Match_Node, Case_Node, Ternary_Node, Timeline_Decl, Timeline_Index_Node,
+                   Timeline_Rollback_Node, Enum_Node)
 
 from dataclasses import dataclass
 from typing import List, Any
@@ -53,6 +54,8 @@ class Type_Infer:
             val_type = check(node.value, self.symtab)
             if not self.symtab.current_scope_contains(node.ident):
                 self.symtab.add(node.ident, val_type)
+            if hasattr(node, '__dict__'):
+                node.inferred_type = val_type
             return val_type
         return check(node, self.symtab)
 
@@ -99,6 +102,7 @@ class SymbolTable:
         except SemanticError:
             return False
 
+
 def get_type_name(t):
     if isinstance(t, Type_Node):
         t = t.type
@@ -122,6 +126,12 @@ def get_type_name(t):
 
 # Validate semantics and types with scoped symbol table.
 def check(node, symtab):
+    res = _check_node(node, symtab)
+    if hasattr(node, '__dict__'):
+        node.inferred_type = res
+    return res
+
+def _check_node(node, symtab):
     if isinstance(node, Int_Node):
         return 'int'
     if isinstance(node, Str_Node):
@@ -149,8 +159,12 @@ def check(node, symtab):
     if isinstance(node, BinOps_Node):
         left_type = check(node.left, symtab)
         right_type = check(node.right, symtab)
+        is_enum_left = isinstance(left_type, str) and left_type.startswith('enum[')
+        is_enum_right = isinstance(right_type, str) and right_type.startswith('enum[')
+        types_match = (left_type == right_type) or (left_type in ['int', 'float'] and is_enum_right) or (right_type in ['int', 'float'] and is_enum_left) or (is_enum_left and is_enum_right)
+
         if node.ops in ['>', '<', '>=', '<=', '==', '!=']:
-            if left_type != 'any' and right_type != 'any' and left_type != right_type:
+            if left_type != 'any' and right_type != 'any' and not types_match:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
             return 'bool'
         elif node.ops in ['&', '|']:
@@ -158,9 +172,9 @@ def check(node, symtab):
                 raise TypeError(f"Error : Logical operations require boolean types")
             return 'bool'
         else:
-            if left_type != 'any' and right_type != 'any' and left_type != right_type:
+            if left_type != 'any' and right_type != 'any' and not types_match:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
-            if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str', 'any']:
+            if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str', 'any'] and not is_enum_left:
                 raise TypeError(f"Error : Cannot perform {node.ops} on {left_type}")
             return left_type if left_type != 'any' else right_type
         
@@ -223,6 +237,19 @@ def check(node, symtab):
         return None
     
     if isinstance(node, Call_Node):
+        if node.ident in ['int', 'to_int']:
+            if node.parameter: check(node.parameter[0], symtab)
+            return 'int'
+        elif node.ident in ['float', 'to_float']:
+            if node.parameter: check(node.parameter[0], symtab)
+            return 'float'
+        elif node.ident in ['str', 'to_str']:
+            if node.parameter: check(node.parameter[0], symtab)
+            return 'str'
+        elif node.ident == 'abs':
+            arg_type = check(node.parameter[0], symtab) if node.parameter else 'int'
+            return arg_type
+
         func_symbol = symtab.get(node.ident)
         # Lambda-typed variables: allow calling without strict param checking
         if func_symbol == 'function':
@@ -271,6 +298,8 @@ def check(node, symtab):
     if isinstance(node, Index_Node):
         target_type = check(node.target, symtab)
         index_type = check(node.index, symtab)
+        if isinstance(target_type, str) and target_type.startswith('enum['):
+            return 'int'
         if 'array[' in str(target_type) and index_type != 'int':
             raise TypeError(f"Error : Array Index must be integer")
         return 'any'
@@ -293,8 +322,14 @@ def check(node, symtab):
                 raise TypeError(f"Error : Cannot {node.method} on fixed-size array")
         if node.method in ('len', 'length'):
             return 'int'
+        elif node.method in ('equals', 'eq'):
+            return 'bool'
+        elif node.method == 'concat':
+            return 'str'
         elif node.method == 'pop':
             return 'any'
+        elif node.method == 'history':
+            return 'array'
         return 'any'
 
     if isinstance(node, Hash_Node):
@@ -434,6 +469,100 @@ def check(node, symtab):
             symtab.pop_scope()
         return None
 
+    if isinstance(node, Ternary_Node):
+        cond_type = check(node.condition, symtab)
+        if cond_type != 'bool':
+            raise TypeError(f"Error : Condition expected boolean type got {cond_type} type")
+        
+        true_type = 'any'
+        false_type = 'any'
 
+        if node.true_block :
+            symtab.push_scope()
+            if isinstance(node.true_block, list):
+                for stmt in node.true_block:
+                    true_type=check(stmt, symtab)
+            else:
+                true_type=check(node.true_block, symtab)
+            symtab.pop_scope()
+
+        if node.false_block :
+            symtab.push_scope()
+            if isinstance(node.false_block, list):
+                for stmt in node.false_block:
+                    false_type=check(stmt, symtab)
+            else:
+                false_type= check(node.false_block, symtab)
+            symtab.pop_scope()
+        if true_type != 'any' and false_type != 'any' and true_type != false_type:
+            raise TypeError(f"Error : Ternary branches must match types, got true branch '{true_type}' and false branch '{false_type}'")   
+        return true_type if true_type != 'any' else false_type
     
+    if isinstance(node, Timeline_Decl):
+        ident_type = get_type_name(node.type) if node.type is not None else 'any'
+        val_type = check(node.value, symtab)
+        if val_type != 'any' and ident_type != 'any' and val_type != ident_type:
+            raise TypeError(f"Error : Timeline {node.ident} declared as {ident_type} but got {val_type}")
+        resolved = ident_type if ident_type != 'any' else val_type
+        symtab.add(node.ident, resolved)
+        return resolved
 
+    if isinstance(node, Timeline_Index_Node):
+        target_type = check(node.target, symtab)
+        index_type = check(node.index, symtab)
+        if index_type != 'int':
+            raise TypeError(f"Error : Index type must be 'int' got {index_type}")
+        return target_type
+
+    if isinstance(node, Timeline_Rollback_Node):
+        if not symtab.contains(node.ident):
+            raise SemanticError(f"Error : Undefined timeline variable '{node.ident}'")
+        ident_type = symtab.get(node.ident)
+
+        if node.index is not None:
+            index_type = check(node.index, symtab)
+            if index_type != 'int':
+                raise TypeError(f"Error : Index type must be 'int' got {index_type}")
+        return ident_type
+    
+    if isinstance(node, Enum_Node):
+        return visit_enum_node(node, symtab)
+    
+    
+    
+    
+def visit_enum_node(node, symtab):
+    #Validate Semantics rule for an Enum
+    """
+    1. Ensure that the Enum name is unique within scope
+    2. Ensure member names within enum is unique
+    3. Type_check explicit member initialization expression(if provided)
+    4. Registers the Enum and its member into symbol table
+    """
+    
+    # 1. check if Enum name already declared in current scope
+    if symtab.current_scope_contains(node.name):
+        raise SemanticError(f"Error : Enum {node.name} already declared in this scp")
+    
+    seen_members = set()
+    
+    # 2. Iterate through Enum members (tuple of (member_name, expr_node))
+    for member in node.members:
+        if isinstance(member, tuple):
+            member_name, expr = member
+        else :
+            member_name = getattr(member, 'name', str(member)) 
+            expr = getattr(member, 'value', None)
+        # check for duplicate member name
+        if member_name in seen_members:
+            raise SemanticError(f"Error : Duplicate member {member_name} in Enum {node.name}")
+        seen_members.add(member_name)
+        
+        if expr is not None :
+            expr_type = check(expr, symtab)
+            if expr_type not in ['int', 'str', 'any']:
+                raise TypeError(f"Error : Enum member '{member_name} value must be in int or str got {expr_type}")
+            
+    enum_type = f"enum[{node.name}]"
+    symtab.add(node.name, enum_type)
+    return enum_type

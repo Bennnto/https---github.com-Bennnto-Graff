@@ -4,11 +4,13 @@ from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node,
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node,
-                   Fstr_Node, Case_Node, Match_Node)
+                   Fstr_Node, Case_Node, Match_Node, Ternary_Node, Timeline_Rollback_Node, Timeline_Index_Node, Timeline_Decl, Enum_Node)
 from environment import Environment
 import re
 from lexicals import lexer
 from parse import parser
+
+
 
 class HeapPointer:
     def __init__(self, address):
@@ -26,6 +28,34 @@ class VelnException(Exception):
     def __init__(self, message):
         self.message = str(message)
 
+class RuntimeEnum:
+    def __init__(self, name, members):
+        self.name = name
+        self.members = members
+        
+    def get(self, member_name):
+        if member_name not in self.members :
+            raise RuntimeError(f"Error : Enum {self.name} has no member {member_name}")
+        return self.members[member_name]
+    
+    def contains(self, member_name):
+        return member_name in self.members
+    
+    def keys(self):
+        return RuntimeArray(list(self.members.keys()))
+    
+    def values(self):
+        return RuntimeArray(list(self.members.values())) 
+    
+    def name_of(self, val):
+        for name, value in self.members.items():
+            if value == val:
+                return name
+        raise RuntimeError(f"Error : Value {val} not found in Enum {self.name}")
+    
+    def len(self):
+        return len(self.members)
+    
 class RuntimeHash:
     def __init__(self, pairs=None):
         self.data = {}
@@ -106,6 +136,7 @@ class RuntimeArray:
 class SemanticError(Exception):
     pass
 
+
 def eval_ast(node, env, in_loop=False):
     if node is None:
         return None
@@ -133,7 +164,12 @@ def eval_ast(node, env, in_loop=False):
                     raise RuntimeError(f"Error: Fixed array expected {node.type.length} elements, got {len(value.elements)}")
                 value.max_len = node.type.length
         
-        env[node.ident] = value
+        # If existing value is a timeline (plain Python list), append to history
+        existing = env.get(node.ident, None) if isinstance(env, dict) else env.get(node.ident, None)
+        if isinstance(existing, list) and not isinstance(existing, RuntimeArray):
+            existing.append(value)
+        else:
+            env[node.ident] = value
         return value
     
     elif isinstance(node, Type_Node):
@@ -300,6 +336,8 @@ def eval_ast(node, env, in_loop=False):
             return target.get(index)                                                                                                               
         if isinstance(target, RuntimeHash):
             return target.get(index)
+        if isinstance(target, RuntimeEnum):
+            return target.get(index)
         raise RuntimeError("Error: Target is not an array or hash")   
 
     elif isinstance(node, Index_Assign_Node):                                                                                                  
@@ -312,12 +350,14 @@ def eval_ast(node, env, in_loop=False):
         if isinstance(target, RuntimeHash):
             target.set(index, value)
             return value
-        raise RuntimeError("Error: Index assignment target is not an array or hash") 
-  
     elif isinstance(node, Method_Call_Node):
         target_obj = eval_ast(node.target, env, in_loop)
         eval_args = [eval_ast(arg, env, in_loop) if not isinstance(arg, list) else [eval_ast(x, env, in_loop) for x in arg] for arg in (node.args if node.args else [])]
-  
+        
+        # Timeline method: x.history() → returns the full version list
+        if isinstance(target_obj, list) and node.method == 'history':
+            return list(target_obj)
+            
         if not hasattr(target_obj, node.method):
             raise RuntimeError(f"Error: Object has no method '{node.method}'")
   
@@ -494,3 +534,90 @@ def eval_ast(node, env, in_loop=False):
                     result = eval_ast(stmt, block_env, in_loop=in_loop)
                 return result 
         return None
+
+    elif isinstance(node, Ternary_Node):
+        condition_val = eval_ast(node.condition, env, in_loop)
+        func_env = Environment(parent=env)
+        result= None
+        if condition_val:
+            if node.true_block:
+                if isinstance(node.true_block, list):
+                    for stmt in node.true_block:
+                        result = eval_ast(stmt, func_env, in_loop=in_loop)
+                    return result
+                else:
+                    return eval_ast(node.true_block, func_env, in_loop=in_loop)
+        else:
+            if node.false_block:
+                if isinstance(node.false_block, list):
+                    for stmt in node.false_block:
+                        result = eval_ast(stmt, func_env, in_loop=in_loop)
+                    return result
+                else:
+                    return eval_ast(node.false_block, func_env, in_loop=in_loop)
+        return None
+
+    elif isinstance(node, Timeline_Decl):
+        ident = node.ident
+        value = eval_ast(node.value, env, in_loop)
+        env[ident] = [value]
+        return value 
+
+    elif isinstance(node, Timeline_Index_Node):
+        history = eval_ast(node.target, env, in_loop)
+        index = eval_ast(node.index, env, in_loop)
+
+        if not isinstance(history, list):
+            raise VelnException(f"Error : Timeline Variable expected 'list'")
+
+        if index >= len(history):
+            raise VelnException(f"Error : Timeline index {index} out of range has {len(history)} versions")
+
+        return history[index]
+
+    elif isinstance(node, Timeline_Rollback_Node):
+        history = env[node.ident]
+
+        if not isinstance(history, list):
+            raise VelnException(f"Error : '{node.ident}' is not a timeline variable")
+
+        if node.index is not None:
+            idx = eval_ast(node.index, env, in_loop)
+            if idx >= len(history):
+                raise VelnException(f"Error : Timeline index {idx} out of range has {len(history)} versions")
+            env[node.ident] = history[:idx + 1]
+        else:
+            if len(history) > 1:
+                env[node.ident] = history[:-1]
+        return env[node.ident][-1]
+    
+    elif isinstance(node, Enum_Node):
+        eval_members = {}
+        current_auto_val = 0
+        for item in node.members:
+            if isinstance(item, tuple):
+                member_name, expr = item
+            else:
+                member_name = getattr(item, 'naame', str(item))
+                expr = getattr(item, 'value', None)
+            
+            if expr is not None :
+                val = eval_ast(expr, env, in_loop=in_loop)
+                eval_members[member_name] = val
+                if isinstance(val, int):
+                    current_auto_val = val + 1
+            else:
+                eval_members[member_name] = current_auto_val
+                current_auto_val += 1
+                    
+        enum_obj = RuntimeEnum(node.name, eval_members)
+        env.set(node.name, enum_obj)
+        return enum_obj
+
+
+
+                
+            
+
+    
+            

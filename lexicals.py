@@ -16,6 +16,7 @@ tokens = (
     'HASH_TYPE',
     'HASH',
     'FSTR',
+    'ENUM',
     
     # Arithmetic Operators
     'ADD',
@@ -82,6 +83,11 @@ tokens = (
     'MUT_REF',
     'MATCH',
     'CASE',
+    'TERNARY',
+    'AT',
+    'HISTORY',
+    'ROLLBACK',
+    'TIMELINE'
 )
 
 reserved_keys = {
@@ -117,6 +123,11 @@ reserved_keys = {
     'deref': 'DEREF',
     'match' : 'MATCH',
     'case' : 'CASE',
+    'timeline' : 'TIMELINE',
+    'rollback' : 'ROLLBACK',
+    'enum' : 'ENUM',
+
+    
 }
 
 t_EQ = r'=='   
@@ -149,6 +160,8 @@ t_DOT = r'\.'
 t_ARROW = r'=>'
 t_THIN_ARROW = r'->'
 t_MUT_REF = r'\*'
+t_TERNARY = r'\?'
+t_AT = r'@'
 
 def t_OK_CHECK(t):
     r'ok\?'
