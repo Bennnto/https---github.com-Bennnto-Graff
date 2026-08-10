@@ -16,6 +16,8 @@ __pycache__/
 *.pyo
 *.pyc
 .env
+parser.out
+parsetab.py
 
 ___
 SQL // DATABASE
