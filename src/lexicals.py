@@ -53,6 +53,8 @@ tokens = (
     'RBRACKET',
     'COMMA',
     'DOT',
+    'DCOLON',
+    'DDOT',
     
     # Keywords
     'ASSIGN',
@@ -87,7 +89,25 @@ tokens = (
     'AT',
     'HISTORY',
     'ROLLBACK',
-    'TIMELINE'
+    'TIMELINE',
+    'BIND',
+    'PUBLIC',
+    'RANGE',
+    'IN',
+    'FIX',
+    'STRUCT',
+    'IMPL',
+    'LSHIFT',
+    'RSHIFT',
+    'XOR',
+    'BITNOT',
+    'AS',
+    'DROP',
+    'ASYNC',
+    'AWAIT',
+    'GAFF',
+    'SAFECAST'
+    
 )
 
 reserved_keys = {
@@ -126,10 +146,25 @@ reserved_keys = {
     'timeline' : 'TIMELINE',
     'rollback' : 'ROLLBACK',
     'enum' : 'ENUM',
-
+    'bind': 'BIND',
+    'pub': 'PUBLIC',
+    'range': 'RANGE',
+    'in': 'IN',
+    'fix': 'FIX',
+    'struct': 'STRUCT',
+    'impl': 'IMPL',
+    'drop': 'DROP',
+    'async': 'ASYNC',
+    'await': 'AWAIT',
+    'gaff': 'GAFF',
+    
     
 }
 
+t_LSHIFT = r'<<'
+t_RSHIFT = r'>>'
+t_XOR = r'\^'
+t_BITNOT = r'~'
 t_EQ = r'=='   
 t_LE = r'<='
 t_GE = r'>='
@@ -162,9 +197,17 @@ t_THIN_ARROW = r'->'
 t_MUT_REF = r'\*'
 t_TERNARY = r'\?'
 t_AT = r'@'
+t_DCOLON = r'::'
+t_DDOT = r'\.\.'
+t_SAFECAST = r'as\?'
 
 def t_OK_CHECK(t):
     r'ok\?'
+    return t
+
+def t_FSTR(t):
+    r'\$\"[^"\n]*\"|\$\'[^\'\n]*\''
+    t.value = t.value[2:-1]
     return t
 
 def t_ID(t):
@@ -172,11 +215,6 @@ def t_ID(t):
     t.type = reserved_keys.get(t.value, "ID")
     if t.type == 'BOOL':
         t.value = (t.value == 'true')
-    return t
-
-def t_FSTR(t):
-    r'\"[^"]*\{[^"]*\"'
-    t.value = t.value[1:-1]
     return t
 
 def t_STR(t):

@@ -9,7 +9,7 @@ from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 from environment import Environment
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -24,26 +24,29 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_str_interpolation():
     # Test 1: Variable interpolation
     code1 = """
     let name = "Ben";
-    let msg = "Hello {name}";
+    let msg = $"Hello {name}";
     """
-    test_case(code1, "msg", "Hello Ben")
+    run_test_case(code1, "msg", "Hello Ben")
 
     # Test 2: Expression interpolation
     code2 = """
     let a = 10;
     let b = 5;
-    let msg = "Sum is {a + b}";
+    let msg = $"Sum is {a + b}";
     """
-    test_case(code2, "msg", "Sum is 15")
+    run_test_case(code2, "msg", "Sum is 15")
 
     # Test 3: Multiple placeholders
     code3 = """
     let x = 3;
     let y = 4;
-    let msg = "{x} + {y} = {x + y}";
+    let msg = $"{x} + {y} = {x + y}";
     """
-    test_case(code3, "msg", "3 + 4 = 7")
+    run_test_case(code3, "msg", "3 + 4 = 7")
+
+if __name__ == "__main__":
+    test_str_interpolation()

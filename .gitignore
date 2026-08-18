@@ -1,33 +1,31 @@
-gitignored file:
-.DS\_Store
+# Bytecode and Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+parser.out
+parsetab.py
+
+# Editor & Agent Dotfiles
+.agents/
+.vscode/
+.ruby-lsp/
+.DS_Store
 .AppleDouble
 .LSOverride
 .Spotlight-V100
 .Trashes
 .fseventsd
-.DocumentRevisions-V100
-.TemporaryItems
-._*
-.VolumeIcon.icns
-_____
-python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyc
-.env
-parser.out
-parsetab.py
 
-___
-SQL // DATABASE
-db.sqlite3
-\*.db
-media/
-.vscode/
-
-___
-Enviromnet
-.venv
-venv
+# Virtual Environments
+venv/
+.venv/
 .env
+
+# Build & Scratch Directories
+dist/
+scratch/
+
+# Non-executable / Internal Plans
+implementation_plan.md
+task.texts

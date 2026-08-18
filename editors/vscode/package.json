@@ -1,0 +1,37 @@
+{
+  "name": "graff-syntax",
+  "displayName": "Graff Language Support",
+  "description": "Syntax highlighting support for the Graff programming language (.gf, .graff)",
+  "version": "1.0.0",
+  "publisher": "graff-lang",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "graff",
+        "aliases": [
+          "Graff",
+          "graff"
+        ],
+        "extensions": [
+          ".gf",
+          ".graff",
+          ".gaff"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "graff",
+        "scopeName": "source.graff",
+        "path": "./syntaxes/graff.tmLanguage.json"
+      }
+    ]
+  }
+}

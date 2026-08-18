@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -23,63 +23,69 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_try_ok():
     # Variant 1: ok? [is_ok, err]
     code1 = '''
     let msg = "";
     try : {
-        let age = -5;
-        match (age < 0) : case (true) : {
-            throw "Age cannot be negative!";
-        }
+        let is_neg = true;
+        match (is_neg) :
+            case (true) : { throw "Age cannot be negative!"; }
+            case (_)    : { let x = 0; }
     } ok? [is_ok, err]: {
-        match (!is_ok) : case (true) : {
-            msg = err;
-        }
+        match (is_ok) :
+            case (false) : { msg = err; }
+            case (_)     : { let y = 0; }
     }
     '''
-    test_case(code1, "msg", "Age cannot be negative!")
+    run_test_case(code1, "msg", "Age cannot be negative!")
 
     # Variant 2: ok? [ok]
     code2 = '''
     let out = "";
-    try :
-        let x = 100;
-        match (x < 100) : case (true) : {
-            throw "error message print";
-        }
-    ok? [ok] :
-        match (ok) : case (true) : {
-            out = "Success!";
-        }
+    try : {
+        let is_err = false;
+        match (is_err) :
+            case (true) : { throw "error message print"; }
+            case (_)    : { let x = 0; }
+    } ok? [ok] : {
+        match (ok) :
+            case (true) : { out = "Success!"; }
+            case (_)    : { let y = 0; }
+    }
     '''
-    test_case(code2, "out", "Success!")
+    run_test_case(code2, "out", "Success!")
 
     # Variant 3: ok? (Default parameters is_ok and err)
     code3 = '''
     let msg3 = "";
-    try : 
-        let age = -10;
-        match (age < 0) : case (true) : {
-            throw "Unbraced age error!";
-        }
-    ok? :
-        match (!is_ok) : case (true) : {
-            msg3 = err;
-        }
+    try : {
+        let is_neg = true;
+        match (is_neg) :
+            case (true) : { throw "Unbraced age error!"; }
+            case (_)    : { let x = 0; }
+    } ok? : {
+        match (is_ok) :
+            case (false) : { msg3 = err; }
+            case (_)     : { let y = 0; }
+    }
     '''
-    test_case(code3, "msg3", "Unbraced age error!")
+    run_test_case(code3, "msg3", "Unbraced age error!")
 
     code4 = '''
     let msg4 = "";
-    try : 
-        let age = -10;
-        match (age < 0) : case (true) : {
-            throw "Unbraced 2-param error!";
-        }
-    ok? [is_ok, err] :
-        match (!is_ok) : case (true) : {
-            msg4 = err;
-        }
+    try : {
+        let is_neg = true;
+        match (is_neg) :
+            case (true) : { throw "Unbraced 2-param error!"; }
+            case (_)    : { let x = 0; }
+    } ok? [is_ok, err] : {
+        match (is_ok) :
+            case (false) : { msg4 = err; }
+            case (_)     : { let y = 0; }
+    }
     '''
-    test_case(code4, "msg4", "Unbraced 2-param error!")
+    run_test_case(code4, "msg4", "Unbraced 2-param error!")
+
+if __name__ == "__main__":
+    test_try_ok()

@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -22,15 +22,18 @@ def test_case(code, var_name, expected_val):
         assert actual_val == expected_val, f"Failed for {var_name} expected {expected_val} got {actual_val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
+def test_assign():
+    run_test_case("let x:int = 5", "x", 5)
+    run_test_case("let x:str = '5'", "x", '5')
+    run_test_case("let y:int = -5234", "y", -5234)
+    run_test_case("let z:float = -3425.34", "z", -3425.34)
+    run_test_case("let a:float = 3.1415", "a", 3.1415)
+    run_test_case("let b:bool = true", "b", True)
+    run_test_case("let c:bool = false", "c", False)
+    run_test_case("let d = 5", "d", 5)
+    run_test_case("let f:str = 'Hello World'", "f", 'Hello World')
+    run_test_case("let e1:float = 1e3", "e1", 1000.0)
+    run_test_case("let e2:float = 1.5e-2", "e2", 0.015)
+
 if __name__ == "__main__":
-    test_case("let x:int = 5", "x", 5)
-    test_case("let x:str = '5'", "x", '5')
-    test_case("let y:int = -5234", "y", -5234)
-    test_case("let z:float = -3425.34", "z", -3425.34)
-    test_case("let a:float = 3.1415", "a", 3.1415)
-    test_case("let b:bool = true", "b", True)
-    test_case("let c:bool = false", "c", False)
-    test_case("let d = 5", "d", 5)
-    test_case("let f:str = 'Hello World'", "f", 'Hello World')
-    test_case("let e1:float = 1e3", "e1", 1000.0)
-    test_case("let e2:float = 1.5e-2", "e2", 0.015)
+    test_assign()

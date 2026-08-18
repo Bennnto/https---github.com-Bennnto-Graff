@@ -1,14 +1,18 @@
+import functools
 from parse import (Assign_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, 
                    SingleOps_Node, Variable_Node, Bool_Node, Disp_Node, Entry_Node,
                    Break_Exception, Continue_Exception, While_Node, Break_Node, Continue_Node, Return_Exception, Return_Node, Void_Node, Function_Node, 
                    Call_Node, For_Node, Float_Node, Array_Node, Index_Node, Index_Assign_Node, Method_Call_Node,
                    Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node,
-                   Fstr_Node, Case_Node, Match_Node, Ternary_Node, Timeline_Rollback_Node, Timeline_Index_Node, Timeline_Decl, Enum_Node)
+                   Fstr_Node, Case_Node, Match_Node, Ternary_Node, Timeline_Rollback_Node, Timeline_Index_Node, Timeline_Decl, Enum_Node
+                   , Fix_Node, Struct_Decl_Node, Struct_Literal_Node, Field_Access_Node, Impl_Node, Bind_Node, Range_Node, Pub_Node, For_Range_Node, Drop_Node,
+                   Async_Node, Await_Node, Gaff_Node)
 from environment import Environment
 import re
 from lexicals import lexer
 from parse import parser
+import threading
 
 
 
@@ -24,9 +28,19 @@ class RefPointer:
 heap_store = {}
 heap_next_addr = 0x1000
 
-class VelnException(Exception):
+class GaffException(Exception):
     def __init__(self, message):
         self.message = str(message)
+
+VelnException = GaffException
+
+class RuntimeStruct:
+    def __init__(self, name, fields):
+        self.name = name
+        self.fields = fields
+
+    def __repr__(self):
+        return f"{self.name}{self.fields}"
 
 class RuntimeEnum:
     def __init__(self, name, members):
@@ -117,6 +131,10 @@ class RuntimeArray:
         return len(self.elements)
 
     def get(self, index):
+        if isinstance(index, slice):
+            return RuntimeArray(self.elements[index])
+        if isinstance(index, range):
+            return RuntimeArray(self.elements[index.start:index.stop])
         if not isinstance(index, int):
             raise TypeError("Error : Index must be an integer")
         if index < 0 or index >= len(self.elements):
@@ -137,6 +155,14 @@ class SemanticError(Exception):
     pass
 
 
+def set_var(env, name, val):
+    if hasattr(env, 'set'):
+        env.set(name, val)
+    elif hasattr(env, 'bindings'):
+        env.bindings[name] = val
+    elif isinstance(env, dict):
+        env[name] = val
+
 def eval_ast(node, env, in_loop=False):
     if node is None:
         return None
@@ -155,8 +181,16 @@ def eval_ast(node, env, in_loop=False):
     
     elif isinstance(node, Float_Node):
         return node.value
+
+    elif isinstance(node, Range_Node):
+        start = eval_ast(node.start, env, in_loop) if node.start is not None else 0
+        stop = eval_ast(node.stop, env, in_loop) if node.stop is not None else None
+        step = eval_ast(node.step, env, in_loop) if node.step is not None else 1
+        return slice(start, stop, step)
     
     elif isinstance(node, Assign_Node):
+        if isinstance(env, Environment) and env.is_immutable(node.ident):
+            raise RuntimeError(f"Error : Cannot reassign fix variable {node.ident}")
         value = eval_ast(node.value, env, in_loop=in_loop)
         if isinstance(value, RuntimeArray) and isinstance(node.type, Array_Type_Node):
             if node.type.length is not None:
@@ -184,6 +218,8 @@ def eval_ast(node, env, in_loop=False):
             return left - right
         elif node.ops == "*":
             return left * right
+        elif node.ops == "**":
+            return left ** right
         elif node.ops == "/":
             if right == 0:
                 raise ZeroDivisionError("Error: Division by zero not allowed")
@@ -192,8 +228,12 @@ def eval_ast(node, env, in_loop=False):
             if right == 0:
                 raise ZeroDivisionError("Error: Division by zero not allowed")
             return left % right
-        elif node.ops == "**":
-            return left ** right 
+        elif node.ops == "<<":
+            return left << right
+        elif node.ops == ">>":
+            return left >> right
+        elif node.ops == "^":
+            return left ^ right
         elif node.ops == ">":
             return left > right
         elif node.ops == "<":
@@ -207,9 +247,9 @@ def eval_ast(node, env, in_loop=False):
         elif node.ops == "==":
             return left == right
         elif node.ops in ["&", "and"]:
-            return left and right
+            return left & right if isinstance(left, int) and isinstance(right, int) else (left and right)
         elif node.ops in ["|", "or"]:
-            return left or right 
+            return left | right if isinstance(left, int) and isinstance(right, int) else (left or right)
     
     elif isinstance(node, Variable_Node):
         if node.ident not in env:
@@ -218,7 +258,9 @@ def eval_ast(node, env, in_loop=False):
         
     elif isinstance(node, SingleOps_Node):
         right = eval_ast(node.right, env, in_loop=in_loop)
-        if node.ops == "!":
+        if node.ops == "~":
+            return ~right
+        elif node.ops == "!":
             return not right
         elif node.ops == "-":
             return -right 
@@ -274,29 +316,36 @@ def eval_ast(node, env, in_loop=False):
     elif isinstance(node, Call_Node):
         if node.ident not in env:
             raise RuntimeError(f"Error: Function {node.ident} not defined")
-        func = env[node.ident]
-
-        if callable(func):
-            eval_args = [eval_ast(arg, env, in_loop) for arg in (node.parameter or [])]
-            return func(*eval_args)
-
-        if not isinstance(func, Function_Node):
-            raise RuntimeError(f"Error: {node.ident} is not a function")
-        
+        if isinstance(node.ident, str):
+            func = env.get(node.ident)
+        else:
+            func = eval_ast(node.ident, env, in_loop=in_loop)
+            
         args = node.parameter if node.parameter else []
         eval_args = [eval_ast(arg, env, in_loop=in_loop) for arg in args]
-        params = func.parameter if func.parameter else []
-        if len(eval_args) != len(params):
-            raise RuntimeError(f"Error: Function {node.ident} expected {len(params)} arguments, got {len(eval_args)}")
         
+        if callable(func):
+            return func(*eval_args)
+            
+        if not isinstance(func, Function_Node) and not isinstance(func, dict):
+            raise RuntimeError(f"Error: {node.ident} is not callable")
+        
+        params = func.parameter if hasattr(func, 'parameter') else func.get('params', [])
         func_env = Environment(parent=env)
-        for param, arg_val in zip(params, eval_args):
+        for i, param in enumerate(params):
             param_name = param.ident if hasattr(param, 'ident') else param
-            func_env.set(param_name, arg_val)
+            if i < len(eval_args):
+                func_env.set(param_name, eval_args[i])
+            elif hasattr(param, 'value') and param.value is not None:
+                default_val = eval_ast(param.value, env, in_loop=in_loop)
+                func_env.set(param_name, default_val)
+            else:
+                raise RuntimeError(f"Error: Function missing argument for '{param_name}'")
                   
         result = None
+        body = func.body if hasattr(func, 'body') else func.get('body', [])
         try:
-            for stmt in func.body:
+            for stmt in body:
                 result = eval_ast(stmt, func_env, in_loop=False)
         except Return_Exception as ret:
             return ret.value
@@ -324,15 +373,42 @@ def eval_ast(node, env, in_loop=False):
             if node.update:
                 eval_ast(node.update, for_env, in_loop=False)
         return result
+
+    elif isinstance(node, For_Range_Node):
+        r = node.range
+        start = eval_ast(r.start, env, in_loop) if getattr(r, 'start', None) is not None else 0
+        stop = eval_ast(r.stop, env, in_loop) if getattr(r, 'stop', None) is not None else 0
+        step = eval_ast(r.step, env, in_loop) if getattr(r, 'step', None) is not None else 1
+        
+        loop_env = Environment(parent=env)
+        res = None
+        for i in range(start, stop, step):
+            set_var(loop_env, node.ident, i)
+            set_var(env, node.ident, i)
+            try:
+                if isinstance(node.for_block, list):
+                    for stmt in node.for_block:
+                        res = eval_ast(stmt, loop_env, in_loop=True)
+                else:
+                    res = eval_ast(node.for_block, loop_env, in_loop=True)
+                for k, v in loop_env.bindings.items():
+                    set_var(env, k, v)
+            except Break_Exception:
+                break
+            except Continue_Exception:
+                continue
+        return res
     
     elif isinstance(node, Array_Node):                                                                                                          
         evaluated_elements = [eval_ast(elem, env, in_loop) for elem in node.elements]                                                          
         return RuntimeArray(evaluated_elements)                                                                                                
                                                                                                                                                
-    elif isinstance(node, Index_Node):                                                                                                         
-        target = eval_ast(node.target, env, in_loop)                                                                                           
-        index = eval_ast(node.index, env, in_loop)                                                                                             
-        if isinstance(target, RuntimeArray):                                                                                                                                                                             
+    elif isinstance(node, Index_Node):
+        target = eval_ast(node.target, env, in_loop)
+        index = eval_ast(node.index, env, in_loop)
+        if isinstance(target, str):
+            return target[index]
+        if isinstance(target, RuntimeArray):
             return target.get(index)                                                                                                               
         if isinstance(target, RuntimeHash):
             return target.get(index)
@@ -353,7 +429,50 @@ def eval_ast(node, env, in_loop=False):
     elif isinstance(node, Method_Call_Node):
         target_obj = eval_ast(node.target, env, in_loop)
         eval_args = [eval_ast(arg, env, in_loop) if not isinstance(arg, list) else [eval_ast(x, env, in_loop) for x in arg] for arg in (node.args if node.args else [])]
+        if isinstance(target_obj, Environment):
+            if target_obj.contains(node.method):
+                fn = target_obj.get(node.method)
+                if isinstance(fn, Function_Node) or isinstance(fn, dict):
+                    fn_env = Environment(parent=target_obj)
+                    params = fn.parameter if hasattr(fn, 'parameter') else fn.get('params', [])
+                    for i, param in enumerate(params):
+                        pname = param.ident if hasattr(param, 'ident') else param
+                        if i < len(eval_args):
+                            fn_env.set(pname, eval_args[i])
+                    try:
+                        body = fn.body if hasattr(fn, 'body') else fn.get('body', [])
+                        res = None
+                        for stmt in body:
+                            res = eval_ast(stmt, fn_env, in_loop=False)
+                        return res
+                    except Return_Exception as ret:
+                        return ret.value
+                elif callable(fn):
+                    return fn(*eval_args)
+            raise RuntimeError(f"Error : Module has no function '{node.method}'")
         
+        if isinstance(target_obj, RuntimeStruct):
+            struct_methods = env.get(f"__struct_methods_{target_obj.name}__", None)
+            if struct_methods and node.method in struct_methods:
+                method_node = struct_methods[node.method]
+                method_env = Environment(parent=env)
+                method_env.set("self", target_obj)
+                params = method_node.parameter if method_node.parameter else []
+                arg_idx = 0
+                for p in params:
+                    if p.ident == "self":
+                        continue
+                    if arg_idx < len(eval_args):
+                        method_env.set(p.ident, eval_args[arg_idx])
+                        arg_idx += 1
+                try:
+                    for stmt in method_node.body:
+                        eval_ast(stmt, method_env, in_loop)
+                    return None
+                except Return_Exception as ret:
+                    return ret.value
+            raise RuntimeError(f"Error : Struct '{target_obj.name}' has no method '{node.method}'")
+
         # Timeline method: x.history() → returns the full version list
         if isinstance(target_obj, list) and node.method == 'history':
             return list(target_obj)
@@ -426,11 +545,11 @@ def eval_ast(node, env, in_loop=False):
                 else:
                     result=eval_ast(node.attempt_block, attempt_env, in_loop)
                 for k, v in attempt_env.bindings.items():
-                    env.set(k, v)
+                    set_var(env, k, v)
                 return result
             except Return_Exception:
                 for k, v in attempt_env.bindings.items():
-                    env.set(k, v)
+                    set_var(env, k, v)
                 return result
             except (VelnException, RuntimeError, ZeroDivisionError, TypeError, KeyError) as ex:
                 last_ex = ex
@@ -511,13 +630,19 @@ def eval_ast(node, env, in_loop=False):
         for match in re.finditer(r'\{([^}]+)\}', raw):
             result += raw[last_end:match.start()]      
             expr_text = match.group(1).strip()
+            fmt_spec = None
+            if ':' in expr_text and not expr_text.startswith('::'):
+                expr_text, fmt_spec = expr_text.split(':', 1)
             expr_ast = parser.parse(expr_text, lexer=lexer)
 
             if isinstance(expr_ast, list) and len(expr_ast) > 0 :
                 val = eval_ast(expr_ast[0], env, in_loop)
             else:
                 val = eval_ast(expr_ast, env, in_loop)
-            result += str(val)
+            if fmt_spec:
+                result += format(val, fmt_spec)
+            else:
+                result += str(val)
             last_end = match.end()
         result += raw[last_end:]
         return result 
@@ -613,11 +738,140 @@ def eval_ast(node, env, in_loop=False):
         enum_obj = RuntimeEnum(node.name, eval_members)
         env.set(node.name, enum_obj)
         return enum_obj
-
-
-
-                
-            
-
     
+    elif isinstance(node, Fix_Node):
+        ident = node.ident if isinstance(node.ident, str) else eval_ast(node.ident, env, in_loop)
+        value = eval_ast(node.value, env, in_loop)
+        if node.ident in env :
+            raise RuntimeError(f"Error : Fix variable {node.ident} already declared")
+        env[ident] = value
+        if isinstance(env, Environment):
+            env.mark_immutable(ident)
+        return value
+
+    elif isinstance(node, Struct_Decl_Node):
+        return None
+
+    elif isinstance(node, Struct_Literal_Node):
+        fields = {
+            fname: eval_ast(fexpr, env, in_loop)
+            for fname, fexpr in node.field_values.items()
+        }
+        return RuntimeStruct(node.name, fields)
+
+    elif isinstance(node, Field_Access_Node):
+        target_obj = eval_ast(node.target, env, in_loop)
+        if isinstance(target_obj, RuntimeStruct):
+            if node.field in target_obj.fields:
+                return target_obj.fields[node.field]
+            raise RuntimeError(f"Error : Field '{node.field}' not found in struct {target_obj.name}")
+        if isinstance(target_obj, RuntimeEnum):
+            return target_obj.get(node.field)
+        if isinstance(target_obj, Environment):
+            if target_obj.contains(node.field):
+                return target_obj.get(node.field)
+            raise RuntimeError(f"Error : Module has no attribute '{node.field}'")
+        if isinstance(target_obj, dict):
+            return target_obj.get(node.field)
+        if hasattr(target_obj, node.field):
+            return getattr(target_obj, node.field)
+        raise RuntimeError(f"Error : Target is not a struct or enum, got {type(target_obj).__name__}")
+
+    elif isinstance(node, Bind_Node):
+        path_str = node.path.value if hasattr(node.path, 'value') else str(node.path)
+        alias_name = node.alias if isinstance(node.alias, str) else (node.alias.ident if hasattr(node.alias, 'ident') else str(node.alias))
+        import os
+        if os.path.exists(path_str):
+            with open(path_str, 'r', encoding='utf-8') as f:
+                code = f.read()
+            mod_ast = parser.parse(code, lexer=lexer)
+            mod_env = Environment()
+            if mod_ast:
+                for stmt in mod_ast:
+                    eval_ast(stmt, mod_env)
+            if node.alias == "*":
+                for k, v in mod_env.bindings.items():
+                    set_var(env, k, v)
+            elif isinstance(node.alias, (list, tuple)):
+                for item in node.alias:
+                    sym_name = item.ident if hasattr(item, 'ident') else str(item)
+                    if sym_name in mod_env.bindings:
+                        set_var(env, sym_name, mod_env.bindings[sym_name])
+            else:
+                if alias_name in mod_env.bindings:
+                    set_var(env, alias_name, mod_env.bindings[alias_name])
+                else:
+                    set_var(env, alias_name, mod_env)
+            return mod_env
+        else:
+            import std_lib
+            mod_obj = std_lib.load_module(path_str)
+            if isinstance(node.alias, (list, tuple)):
+                for item in node.alias:
+                    sym_name = item.ident if hasattr(item, 'ident') else str(item)
+                    if isinstance(mod_obj, dict) and sym_name in mod_obj:
+                        set_var(env, sym_name, mod_obj[sym_name])
+                    elif hasattr(mod_obj, sym_name):
+                        set_var(env, sym_name, getattr(mod_obj, sym_name))
+                return mod_obj
+            else:
+                set_var(env, alias_name, mod_obj)
+                return mod_obj
+
+    elif isinstance(node, Impl_Node):
+        key = f"__struct_methods_{node.struct_name}__"
+        methods_dict = env.get(key, None) if env.contains(key) else {}
+        if methods_dict is None:
+            methods_dict = {}
+        for method in node.methods:
+            methods_dict[method.ident] = method
+        env.set(key, methods_dict)
+        return None
+
+    elif isinstance(node, Pub_Node):
+        return eval_ast(node.node, env, in_loop=in_loop)
+
+    elif isinstance(node, Drop_Node):
+        if env.contains(node.target):
+            val = env.get(node.target, None)
+            if isinstance(val, HeapPointer) and val.address in heap_store:
+                del heap_store[val.address]
+            if node.target in env.bindings:
+                del env.bindings[node.target]
+        return None
+
+    elif isinstance(node, Async_Node):
+        fn = node.func
+        fn.is_async = True
+        env.set(fn.ident, fn)   # Environment uses .set(), not dict brackets
+        return None
+
+    elif isinstance(node, Await_Node):
+        result_box = eval_ast(node.expr, env, in_loop=in_loop)
+        if isinstance(result_box, dict) and '__thread__' in result_box:
+            result_box['__thread__'].join()
+            return result_box['__result__']
+        return result_box
+
+    elif isinstance(node, Gaff_Node):
+        def constraint_fn(new_val):
+            hook_env = Environment(parent=env)
+            # Bind the variable to the new value within the constraint check
+            hook_env.bindings[node.ident] = new_val
             
+            result = None
+            if isinstance(node.gaff_block, list):
+                for stmt in node.gaff_block:
+                    result = eval_ast(stmt, hook_env, in_loop=in_loop)
+            else:
+                result = eval_ast(node.gaff_block, hook_env, in_loop=in_loop)
+                
+            if result is False:
+                raise RuntimeError(f"Error : Constraint on '{node.ident}' violated.")
+                
+        env.add_hook(node.ident, constraint_fn)
+        
+        # Check immediately for the current value if it exists
+        if env.contains(node.ident):
+            constraint_fn(env.get(node.ident))
+        return None

@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -26,7 +26,7 @@ def test_case(code, var_name, expected_val):
         assert actual_val == expected_val, f"Failed for {var_name} expected {expected_val} got {actual_val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_rollback():
     code1 = """
     let timeline x : int = 5 
     x = 10
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     rollback x@1
     
     """
-    test_case(code1, 'x', 10)
+    run_test_case(code1, 'x', 10)
 
     code2 ="""
     let timeline y : int = 10
@@ -45,4 +45,7 @@ if __name__ == "__main__":
     y.history()
     rollback y@3
     """
-    test_case(code2, 'y', 100)
+    run_test_case(code2, 'y', 100)
+
+if __name__ == "__main__":
+    test_rollback()

@@ -9,7 +9,7 @@ from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 from environment import Environment
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -24,31 +24,34 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_lambda():
     # Test 1: single-arg lambda with type annotations
     code1 = """
     let y = lambda (x:int): int -> x + 3;
     let z = y(5);
     """
-    test_case(code1, "z", 8)
+    run_test_case(code1, "z", 8)
 
     # Test 2: single-arg lambda without return-type annotation
     code2 = """
     let doubler = lambda (n) -> n * 2;
     let r = doubler(15);
     """
-    test_case(code2, "r", 30)
+    run_test_case(code2, "r", 30)
 
     # Test 3: multi-arg lambda
     code3 = """
     let add = lambda (x, y) -> x + y;
     let s = add(6, 7);
     """
-    test_case(code3, "s", 13)
+    run_test_case(code3, "s", 13)
 
     # Test 4: no-parameter lambda
     code4 = """
     let fortytwo = lambda () -> 42;
     let n = fortytwo();
     """
-    test_case(code4, "n", 42)
+    run_test_case(code4, "n", 42)
+
+if __name__ == "__main__":
+    test_lambda()

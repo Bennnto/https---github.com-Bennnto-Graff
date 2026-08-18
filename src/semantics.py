@@ -1,22 +1,156 @@
+from src.parse import Gaff_Node
 from parse import (Assign_Node, Bool_Node, Int_Node, Type_Node, BinOps_Node, Str_Node, Variable_Node,
                    SingleOps_Node, Disp_Node, Entry_Node, While_Node, Return_Node, Function_Node,
                    Call_Node, For_Node, Float_Node, Param_Node, Array_Node, Index_Node, Index_Assign_Node,
                    Method_Call_Node, Array_Type_Node, Hash_Node, Hash_Type_Node, Throw_Node, Try_Ok_Node,
                    Assert_Node, Assert_Eq_Node, Attempt_Node, Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node,
                    Deref_Assign_Node, Fstr_Node, Match_Node, Case_Node, Ternary_Node, Timeline_Decl, Timeline_Index_Node,
-                   Timeline_Rollback_Node, Enum_Node)
+                   Timeline_Rollback_Node, Enum_Node, Pub_Node, Bind_Node, Range_Node, For_Range_Node, Fix_Node, 
+                   Struct_Decl_Node, Struct_Literal_Node, Field_Access_Node, Generic_Type_Node, Impl_Node, parser, Drop_Node,
+                   Async_Node, Await_Node)
+from lexicals import lexer
 
 from dataclasses import dataclass
 from typing import List, Any
+from enum import Enum, auto
 
 class SemanticError(Exception):
     pass
 class TypeError(Exception):
     pass
+class BorrowError(Exception):
+    pass
+
+class OwnershipState(Enum):
+    OWNED = auto()
+    MOVED = auto()
+
+class SymbolState:
+    def __init__(self, name: str):
+        self.name = name
+        self.state = OwnershipState.OWNED
+        self.immutable_borrows = 0
+        self.is_mutably_borrowed = False
+
+class BorrowChecker:
+    def __init__(self):
+        self.scopes = [{}]
+
+    def push_scope(self):
+        self.scopes.append({})
+
+    def pop_scope(self):
+        if len(self.scopes) > 1:
+            self.scopes.pop()
+
+    def declare(self, name: str):
+        self.scopes[-1][name] = SymbolState(name)
+
+    def get_symbol(self, name: str) -> SymbolState:
+        for scope in reversed(self.scopes):
+            if name in scope:
+                return scope[name]
+        return None
+
+    def check_ast(self, ast):
+        if isinstance(ast, list):
+            for node in ast:
+                self.check_node(node)
+        elif ast is not None:
+            self.check_node(ast)
+
+    def check_node(self, node):
+        if node is None:
+            return
+
+        if isinstance(node, Assign_Node):
+            # Check value expression first
+            if isinstance(node.value, Move_Node):
+                var_name = getattr(node.value, 'var_name', getattr(node.value, 'target', ''))
+                if isinstance(var_name, Variable_Node):
+                    var_name = var_name.ident
+                sym = self.get_symbol(var_name)
+                if sym:
+                    if sym.state == OwnershipState.MOVED:
+                        raise BorrowError(f"Compile Error: Cannot move already moved variable '{var_name}'")
+                    if sym.immutable_borrows > 0 or sym.is_mutably_borrowed:
+                        raise BorrowError(f"Compile Error: Cannot move '{var_name}' while it is borrowed")
+                    sym.state = OwnershipState.MOVED
+            else:
+                self.check_node(node.value)
+
+            self.declare(node.ident)
+
+        elif isinstance(node, Variable_Node):
+            sym = self.get_symbol(node.ident)
+            if sym and sym.state == OwnershipState.MOVED:
+                raise BorrowError(f"Compile Error: Cannot read moved variable '{node.ident}'")
+
+        elif isinstance(node, Move_Node):
+            var_name = getattr(node, 'var_name', getattr(node, 'target', ''))
+            if isinstance(var_name, Variable_Node):
+                var_name = var_name.ident
+            sym = self.get_symbol(var_name)
+            if sym:
+                if sym.state == OwnershipState.MOVED:
+                    raise BorrowError(f"Compile Error: Cannot move already moved variable '{var_name}'")
+                if sym.immutable_borrows > 0 or sym.is_mutably_borrowed:
+                    raise BorrowError(f"Compile Error: Cannot move '{var_name}' while it is borrowed")
+                sym.state = OwnershipState.MOVED
+
+        elif isinstance(node, Ref_Node):
+            var_name = getattr(node, 'var_name', getattr(node, 'target', ''))
+            sym = self.get_symbol(var_name)
+            if sym:
+                if sym.state == OwnershipState.MOVED:
+                    raise BorrowError(f"Compile Error: Cannot borrow moved variable '{var_name}'")
+                if getattr(node, 'is_mutable', False):
+                    if sym.is_mutably_borrowed or sym.immutable_borrows > 0:
+                        raise BorrowError(f"Compile Error: Cannot borrow '{var_name}' as mutable more than once or while borrowed")
+                    sym.is_mutably_borrowed = True
+                else:
+                    if sym.is_mutably_borrowed:
+                        raise BorrowError(f"Compile Error: Cannot borrow '{var_name}' as immutable while mutably borrowed")
+                    sym.immutable_borrows += 1
+
+        elif isinstance(node, Drop_Node):
+            sym = self.get_symbol(node.target)
+            if sym:
+                if sym.state == OwnershipState.MOVED:
+                    raise BorrowError(f"Compile Error: Cannot drop already moved variable '{node.target}'")
+                if sym.immutable_borrows > 0 or sym.is_mutably_borrowed:
+                    raise BorrowError(f"Compile Error: Cannot drop '{node.target}' while it is borrowed")
+                sym.state = OwnershipState.MOVED
+
+        elif isinstance(node, Function_Node):
+            self.declare(node.ident)
+            self.push_scope()
+            if node.parameter:
+                for p in node.parameter:
+                    self.declare(p.ident)
+            self.check_ast(node.body)
+            self.pop_scope()
+
+        elif isinstance(node, While_Node):
+            self.check_node(node.condition)
+            self.push_scope()
+            self.check_ast(node.while_block)
+            self.pop_scope()
+
+        elif isinstance(node, For_Node):
+            self.push_scope()
+            if node.init:
+                self.check_node(node.init)
+            self.check_node(node.condition)
+            self.check_ast(node.for_block)
+            if node.update:
+                self.check_node(node.update)
+            self.pop_scope()
 
 class Type_Infer:
     def __init__(self, symtab):
         self.symtab = symtab
+        self.struct_schemas = {}
     
     def infer_program(self, ast):
         for node in ast:
@@ -40,7 +174,8 @@ class Type_Infer:
         re_type = get_type_name(node.re_type) if node.re_type else self.infer_function_return_type(node)
         self.symtab.pop_scope()
         
-        self.symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types))
+        param_defaults = [p.value is not None for p in params]
+        self.symtab.add(node.ident, FunctionSymbol(return_type=re_type, param_types=param_types, param_defaults=param_defaults))
 
     def infer_function_return_type(self, node):
         for stmt in node.body:
@@ -63,10 +198,14 @@ class Type_Infer:
 class FunctionSymbol:
     return_type : Any
     param_types : List[Any]
+    param_defaults : List[bool] = None
 
 class SymbolTable:
     def __init__(self):
         self.scopes = [{}]
+        self.has_wildcard = False
+        self.struct_schemas = {}
+        self.struct_methods = {}
         
     # Enter new block scope for if / loop / function.    
     def push_scope(self):
@@ -89,6 +228,8 @@ class SymbolTable:
         for scope in reversed(self.scopes):
             if name in scope :
                 return scope[name]
+        if getattr(self, 'has_wildcard', False):
+            return 'any'
         raise SemanticError(f"Error : Variable {name} not declared")
         
     # Check current scope only (no outer scope search)
@@ -107,6 +248,10 @@ def get_type_name(t):
     if isinstance(t, Type_Node):
         t = t.type
         
+    if isinstance(t, Generic_Type_Node):
+        args_str = ", ".join(get_type_name(a) for a in t.type_args)
+        return f"{t.name}<{args_str}>"
+        
     if isinstance(t, Hash_Type_Node):
         key_t = get_type_name(t.key_type) if t.key_type else 'any'
         value_t = get_type_name(t.value_type) if t.value_type else 'any'
@@ -123,6 +268,61 @@ def get_type_name(t):
         'VOID_TYPE': 'void',
     }
     return mapping.get(t, t)
+
+def insert_auto_drop(ast, is_block=False):
+    """ Traverse the AST and append Drop_Node for variable 
+    that fall out of scope at the end of block or before return"""
+
+    def find_move_var(node):
+        """ Helper fn to extract variable name from a Move_Node if present."""
+        if isinstance(node, Move_Node):
+            if isinstance(node.target if hasattr(node, "target") else getattr(node, 'expr', None), Variable_Node):
+                target_node = getattr(node, 'target', getattr(node, 'expr', None))
+                return target_node.ident
+            return None
+
+    def transform_block(stmts, is_nested_block=False):
+        new_stmt = []
+        active_var = []
+
+        for stmt in stmts:
+            if isinstance(stmt, Assign_Node):
+                moved_var = find_move_var(stmt.value)
+                if moved_var and moved_var in active_var:    
+                    active_var.remove(moved_var)
+                if stmt.ident not in active_var:
+                    active_var.append(stmt.ident)
+                new_stmt.append(stmt)
+            elif isinstance(stmt, Drop_Node):
+                if stmt.target in active_var:
+                    active_var.remove(stmt.target)
+                new_stmt.append(stmt)
+            elif isinstance(stmt, Function_Node):
+                stmt.body = transform_block(stmt.body, is_nested_block=True)
+                new_stmt.append(stmt)
+
+            elif isinstance(stmt, While_Node):
+                stmt.while_block = transform_block(stmt.while_block, is_nested_block=True)
+                new_stmt.append(stmt)
+
+            elif isinstance(stmt, For_Node):
+                stmt.for_block = transform_block(stmt.for_block, is_nested_block=True)
+                new_stmt.append(stmt)          
+
+            elif isinstance(stmt, Return_Node):
+                for var_name in reversed(active_var):
+                    new_stmt.append(Drop_Node(target=var_name))
+                active_var.clear()
+                new_stmt.append(stmt)
+            else :
+                new_stmt.append(stmt)
+
+        if is_nested_block:
+            for var_name in reversed(active_var):
+                new_stmt.append(Drop_Node(target=var_name))
+        return new_stmt
+    return transform_block(ast, is_nested_block=is_block)
+
 
 # Validate semantics and types with scoped symbol table.
 def check(node, symtab):
@@ -163,6 +363,11 @@ def _check_node(node, symtab):
         is_enum_right = isinstance(right_type, str) and right_type.startswith('enum[')
         types_match = (left_type == right_type) or (left_type in ['int', 'float'] and is_enum_right) or (right_type in ['int', 'float'] and is_enum_left) or (is_enum_left and is_enum_right)
 
+        if node.ops in ['<<', '>>', '^']:
+            if (left_type not in ['int', 'any']) or (right_type not in ['int', 'any']):
+                raise TypeError(f"Error : Bitwise operation '{node.ops}' requires integer operands")
+            return 'int'
+
         if node.ops in ['>', '<', '>=', '<=', '==', '!=']:
             if left_type != 'any' and right_type != 'any' and not types_match:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
@@ -174,6 +379,9 @@ def _check_node(node, symtab):
         else:
             if left_type != 'any' and right_type != 'any' and not types_match:
                 raise TypeError(f"Error : Type Error type of {left_type} not compatible with type of {right_type}")
+            if node.ops in ['-', '*', '/', '%', '**']:
+                if left_type == 'str' or right_type == 'str':
+                    raise TypeError(f"Error : Cannot perform arithmetic operator '{node.ops}' on string type")
             if node.ops in ['+', '-', '*', '/', '%', '**'] and left_type not in ['int', 'float', 'str', 'any'] and not is_enum_left:
                 raise TypeError(f"Error : Cannot perform {node.ops} on {left_type}")
             return left_type if left_type != 'any' else right_type
@@ -183,6 +391,10 @@ def _check_node(node, symtab):
     
     if isinstance(node, SingleOps_Node):
         right_type = check(node.right, symtab)
+        if node.ops == '~':
+            if right_type not in ['int', 'any']:
+                raise TypeError(f"Error : Cannot perform bitwise NOT on {right_type}")
+            return 'int'
         if node.ops == '!' and right_type != 'bool':
             raise TypeError(f"Error : Cannot perform NOT on {right_type}")
         if node.ops == '-' and right_type not in ['int', 'float']:
@@ -252,16 +464,18 @@ def _check_node(node, symtab):
 
         func_symbol = symtab.get(node.ident)
         # Lambda-typed variables: allow calling without strict param checking
-        if func_symbol == 'function':
+        if func_symbol in ['function', 'any']:
             return 'any'
         if not isinstance(func_symbol, FunctionSymbol):
             raise TypeError(f"Error : {node.ident} is not a function")
         args = node.parameter if node.parameter else []
-        if len(args) != len(func_symbol.param_types):
-            raise TypeError(f"Error : Function {node.ident} expected {len(func_symbol.param_types)} arguments got {len(args)}")
+        param_defaults = func_symbol.param_defaults if func_symbol.param_defaults else [False] * len(func_symbol.param_types)
+        min_req = sum(1 for d in param_defaults if not d)
+        if len(args) < min_req or len(args) > len(func_symbol.param_types):
+            raise TypeError(f"Error : Function {node.ident} expected between {min_req} and {len(func_symbol.param_types)} arguments got {len(args)}")
         for arg, expected_type in zip(args, func_symbol.param_types):
             arg_type = check(arg, symtab)
-            if arg_type != expected_type:
+            if arg_type != expected_type and expected_type != 'any' and arg_type != 'any':
                 raise TypeError(f"Error : Type Error type of {arg_type} not compatible with expected {expected_type}")           
         return func_symbol.return_type
     
@@ -297,12 +511,10 @@ def _check_node(node, symtab):
 
     if isinstance(node, Index_Node):
         target_type = check(node.target, symtab)
-        index_type = check(node.index, symtab)
-        if isinstance(target_type, str) and target_type.startswith('enum['):
-            return 'int'
-        if 'array[' in str(target_type) and index_type != 'int':
-            raise TypeError(f"Error : Array Index must be integer")
-        return 'any'
+        if isinstance(node.index, Range_Node):
+            if node.index.start: check(node.index.start, symtab)
+            if node.index.stop: check(node.index.stop, symtab)
+            return target_type
 
     if isinstance(node, Index_Assign_Node):
         target_type = check(node.target, symtab)
@@ -317,6 +529,11 @@ def _check_node(node, symtab):
         if node.args:
             for arg in node.args:
                 check(arg, symtab)
+        if isinstance(target_type, str) and target_type.startswith("struct["):
+            sname = target_type[7:-1]
+            if hasattr(symtab, 'struct_methods') and sname in symtab.struct_methods and node.method in symtab.struct_methods[sname]:
+                method_sym = symtab.struct_methods[sname][node.method]
+                return method_sym.return_type if hasattr(method_sym, 'return_type') else 'any'
         if node.method in ('push', 'pop'):
             if 'array[' in str(target_type) and ',' in str(target_type):
                 raise TypeError(f"Error : Cannot {node.method} on fixed-size array")
@@ -452,6 +669,16 @@ def _check_node(node, symtab):
         return None
 
     if isinstance(node, Fstr_Node):
+        raw = getattr(node, 'raw', '')
+        if raw:
+            import re
+            for match in re.finditer(r'\{([^}]+)\}', raw):
+                expr_text = match.group(1).strip()
+                if ':' in expr_text and not expr_text.startswith('::'):
+                    expr_text, _ = expr_text.split(':', 1)
+                expr_ast = parser.parse(expr_text, lexer=lexer)
+                target_ast = expr_ast[0] if isinstance(expr_ast, list) and len(expr_ast) > 0 else expr_ast
+                check(target_ast, symtab)
         return 'str'
 
 
@@ -527,9 +754,152 @@ def _check_node(node, symtab):
     
     if isinstance(node, Enum_Node):
         return visit_enum_node(node, symtab)
+
+    if isinstance(node, Bind_Node):
+        path_resolved = check(node.path, symtab)
+        if path_resolved != 'str':
+            raise TypeError(f"Error : Bind path expected 'str' got {path_resolved}")
+        
+        if isinstance(node.alias, list):
+            for sym in node.alias:
+                symtab.add(sym, 'any')
+        elif node.alias == "*":
+            symtab.has_wildcard = True
+        else:
+            alias = getattr(node.alias, 'ident', str(node.alias))
+            symtab.add(alias, 'any')
+        return 'any'
+
+    if isinstance(node, Pub_Node):
+        return check(node.node, symtab)
     
+    if isinstance(node, Range_Node):
+        if getattr(node, 'amount', None) is not None:
+            check(node.amount, symtab)
+        if getattr(node, 'start', None) is not None:
+            check(node.start, symtab)
+        if getattr(node, 'stop', None) is not None:
+            check(node.stop, symtab)
+        if getattr(node, 'step', None) is not None:
+            check(node.step, symtab)
+        return 'range'
     
+    if isinstance(node, For_Range_Node):
+        rnode = getattr(node, 'range_node', getattr(node, 'range', None))
+        if rnode:
+            check(rnode, symtab)
+        symtab.push_scope()
+        var_name = getattr(node, 'var_name', getattr(node, 'ident', 'i'))
+        if var_name:
+            symtab.add(var_name, 'int')
+        body = getattr(node, 'body', getattr(node, 'for_block', []))
+        if isinstance(body, list):
+            for stmt in body:
+                check(stmt, symtab)
+        elif body:
+            check(body, symtab)
+        symtab.pop_scope()
+        return None
     
+    if isinstance(node, Fix_Node):
+        ident_type = get_type_name(node.type) if node.type else 'any'
+        value_type = check(node.value, symtab)
+        
+        # Check type mismatch only if an explicit type was declared
+        if ident_type != 'any' and ident_type != value_type:
+            raise TypeError(f"Error : Expected type {ident_type} type got {value_type} type mismatched")
+        
+        # Determine final type (use value_type if ident_type was 'any')
+        final_type = value_type if ident_type == 'any' else ident_type
+        
+        # Register symbol into symtab so future lookups succeed
+        symtab.add(node.ident, final_type)
+        return final_type
+
+    if isinstance(node, Struct_Decl_Node):
+        field_types = {name: get_type_name(t) for name, t in node.fields.items()}
+        symtab.add(node.name, f"struct_type:{node.name}")
+        symtab.struct_schemas[node.name] = {
+            'fields': field_types,
+            'type_params': getattr(node, 'type_params', None)
+        }
+        return 'void'
+
+    if isinstance(node, Struct_Literal_Node):
+        schema_info = symtab.struct_schemas.get(node.name)
+        if not schema_info:
+            raise SemanticError(f"Error : Struct '{node.name}' not declared")
+        
+        if isinstance(schema_info, dict) and 'fields' in schema_info:
+            schema_fields = dict(schema_info['fields'])
+            type_params = schema_info.get('type_params')
+        else:
+            schema_fields = dict(schema_info)
+            type_params = None
+
+        if type_params and getattr(node, 'type_args', None):
+            mapping = {}
+            for param_name, type_arg_node in zip(type_params, node.type_args):
+                mapping[param_name] = get_type_name(type_arg_node)
+            for fname, ftype in schema_fields.items():
+                if ftype in mapping:
+                    schema_fields[fname] = mapping[ftype]
+
+        for fname, expr in node.field_values.items():
+            if fname not in schema_fields:
+                raise TypeError(f"Error : Field '{fname}' not in struct '{node.name}'")
+            val_type = check(expr, symtab)
+            if val_type != schema_fields[fname] and schema_fields[fname] != 'any':
+                raise TypeError(f"Error : Field '{fname}' expected '{schema_fields[fname]}', got '{val_type}'")
+        return f"struct[{node.name}]"
+    if isinstance(node, Field_Access_Node):
+        target_type = check(node.target, symtab)
+        if isinstance(target_type, str) and target_type.startswith("enum"):
+            return 'int'
+        if isinstance(target_type, str) and target_type.startswith("struct["):
+            sname = target_type[7:-1]
+            schema_info = symtab.struct_schemas.get(sname, {})
+            schema_fields = schema_info['fields'] if isinstance(schema_info, dict) and 'fields' in schema_info else schema_info
+            if node.field not in schema_fields:
+                raise SemanticError(f"Error : Struct '{sname}' has no field '{node.field}'")
+            return schema_fields[node.field]
+        if target_type == 'any':
+            return 'any'
+        raise TypeError(f"Error : Target must be a struct instance or enum, got {target_type}")
+
+    if isinstance(node, Impl_Node):
+        if not hasattr(symtab, 'struct_methods'):
+            symtab.struct_methods = {}
+        if node.struct_name not in symtab.struct_methods:
+            symtab.struct_methods[node.struct_name] = {}
+        for method in node.methods:
+            symtab.push_scope()
+            symtab.add("self", f"struct[{node.struct_name}]")
+            if method.parameter:
+                for p in method.parameter:
+                    if p.ident != "self":
+                        p_type = get_type_name(p.type) if p.type else 'any'
+                        symtab.add(p.ident, p_type)
+            for stmt in method.body:
+                check(stmt, symtab)
+            symtab.pop_scope()
+            re_type = get_type_name(method.re_type) if method.re_type else 'any'
+            symtab.struct_methods[node.struct_name][method.ident] = FunctionSymbol(return_type=re_type, param_types=[], param_defaults=[])
+        return 'void'
+
+    if isinstance(node, Await_Node):
+        # Check that expr is a Call_Node pointing to an async-flagged function
+        if isinstance(node.expr, Call_Node):
+            fn = symtab.lookup(node.expr.ident) if hasattr(symtab, 'lookup') else None
+            if fn is not None and not getattr(fn, 'is_async', False):
+                raise TypeError(f"Cannot await '{node.expr.ident}' — it is not an async function")
+        return 'any'
+
+    if isinstance(node, Gaff_Node):
+        ident_type = symtab.get(node.ident)
+        for stmt in node.gaff_block:
+            check(stmt, symtab)
+        return 'void'
     
 def visit_enum_node(node, symtab):
     #Validate Semantics rule for an Enum

@@ -8,7 +8,10 @@ from parse import (
     Throw_Node, Try_Ok_Node, Assert_Node, Assert_Eq_Node, Attempt_Node,
     Lambda_Node, Box_Node, Move_Node, Ref_Node, Deref_Node, Deref_Assign_Node,
     Fstr_Node, Case_Node, Match_Node, Ternary_Node, Timeline_Decl,
-    Timeline_Index_Node, Timeline_Rollback_Node, Enum_Node
+    Timeline_Index_Node, Timeline_Rollback_Node, Enum_Node, Pub_Node,
+    Bind_Node, Range_Node, For_Range_Node, Fix_Node, Struct_Decl_Node,
+    Struct_Literal_Node, Field_Access_Node, Impl_Node, Drop_Node,
+    Async_Node, Await_Node, Gaff_Node
 )
 
 class Instruction:
@@ -45,9 +48,28 @@ class Compiler:
         else :
             self.compile_node(ast)
         self.emit(Opcode.OP_HALT)
-        return self.instructions 
+        return self.instructions
 
-
+    def optimize(self):
+        """Peephole optimization pass over instructions"""
+        optimized = []
+        i = 0
+        while i < len(self.instructions):
+            inst1 = self.instructions[i]
+            inst2 = self.instructions[i+1] if i+1 < len(self.instructions) else None
+        # Pattern 1 OP_LOAD_CONST followed by OP_STORE_NAME
+            if inst1.op == Opcode.OP_LOAD_CONST and inst2 and inst2.op == Opcode.OP_NAME:
+                var_name = inst2.arg
+                const_val = inst1.arg
+                optimized.append(Instruction(Opcode.OP_STORE_CONST, (var_name, const_val)))
+                i += 2
+                continue
+            
+            optimized.append(inst1)
+            i += 1
+        self.instructions = optimized
+        return self.instructions
+            
     def compile_node(self, node):
         if node is None :
             return
@@ -88,6 +110,9 @@ class Compiler:
                 'and': Opcode.OP_AND,
                 '|': Opcode.OP_OR,
                 'or': Opcode.OP_OR,
+                '<<': Opcode.OP_LSHIFT,
+                '>>': Opcode.OP_RSHIFT,
+                '^': Opcode.OP_BITXOR,
             }
             if node.ops in op_map:
                 self.emit(op_map[node.ops])
@@ -95,11 +120,13 @@ class Compiler:
                 raise ValueError(f"Unknown binary Operator {node.ops}")
 
         elif isinstance(node, SingleOps_Node):
-            self.compile_node(node.expr)
+            self.compile_node(node.right)
             if node.ops == '-':
                 self.emit(Opcode.OP_NEG)
             elif node.ops == '!':
                 self.emit(Opcode.OP_NOT)
+            elif node.ops == '~':
+                self.emit(Opcode.OP_BITNOT)
         
         elif isinstance(node, Disp_Node):
             self.compile_node(node.expr)
@@ -193,20 +220,30 @@ class Compiler:
 
             for case in node.cases:
                 is_wildcard = isinstance(case.pattern, Variable_Node) and case.pattern.ident == '_'
-                if not is_wildcard :
-                    self.emit(Opcode.OP_LOAD_CONST, True)
+                if not is_wildcard:
+                    self.emit(Opcode.OP_DUP)
                     self.compile_node(case.pattern)
                     self.emit(Opcode.OP_EQ)
                     jump_next = self.emit(Opcode.OP_JUMP_IF_FALSE, 0)
-                else:
-                    jump_next = None
-
-                self.compile_node(case.body)
-                jump_to_ends.append(self.emit(Opcode.OP_JUMP, 0))
-            
-                if jump_next is not None:
+                    self.emit(Opcode.OP_POP)
+                    if isinstance(case.body, list):
+                        for stmt in case.body:
+                            self.compile_node(stmt)
+                    else:
+                        self.compile_node(case.body)
+                    jump_to_ends.append(self.emit(Opcode.OP_JUMP, 0))
                     self.patch(jump_next, len(self.instructions))
+                else:
+                    self.emit(Opcode.OP_POP)
+                    if isinstance(case.body, list):
+                        for stmt in case.body:
+                            self.compile_node(stmt)
+                    else:
+                        self.compile_node(case.body)
+                    jump_to_ends.append(self.emit(Opcode.OP_JUMP, 0))
+                    break
 
+            self.emit(Opcode.OP_POP)
             end_addr = len(self.instructions)
             for jmp in jump_to_ends:
                 self.patch(jmp, end_addr)
@@ -217,9 +254,18 @@ class Compiler:
             fn_code = fn_compiler.compile(fn_body)
             param_names = [p.ident if hasattr(p, 'ident') else p for p in (node.parameter or [])]
 
+            defaults = {}
+            if node.parameter:
+                for p in node.parameter:
+                    if hasattr(p, 'value') and p.value is not None:
+                        from eval import eval_ast
+                        from environment import Environment
+                        defaults[p.ident] = eval_ast(p.value, Environment())
+
             func_data = {
                 'name': node.ident,
                 'params' : param_names,
+                'defaults': defaults,
                 'code': fn_code
             }
             self.emit(Opcode.OP_MAKE_FUNC, func_data)
@@ -286,8 +332,19 @@ class Compiler:
 
         elif isinstance(node, Index_Node):
             self.compile_node(node.target)
-            self.compile_node(node.index)
-            self.emit(Opcode.OP_BINARY_INDEX)
+            if isinstance(node.index, Range_Node):
+                if node.index.start:
+                    self.compile_node(node.index.start)
+                else:
+                    self.emit(Opcode.OP_LOAD_CONST, None)
+                if node.index.stop:
+                    self.compile_node(node.index.stop)
+                else:
+                    self.emit(Opcode.OP_LOAD_CONST, None)
+                self.emit(Opcode.OP_SLICE)
+            else:
+                self.compile_node(node.index)
+                self.emit(Opcode.OP_BINARY_INDEX)
 
         elif isinstance(node, Index_Assign_Node):
             self.compile_node(node.target)
@@ -359,8 +416,45 @@ class Compiler:
             self.emit(Opcode.OP_DEREF_ASSIGN)
         
         elif isinstance(node, Fstr_Node):
-            self.emit(Opcode.OP_LOAD_CONST, node.raw)
-            self.emit(Opcode.OP_FSTR_EVAL)
+            raw = getattr(node, 'raw', '')
+            if not raw:
+                self.emit(Opcode.OP_LOAD_CONST, "")
+            else:
+                last_end = 0
+                parts_count = 0
+                import re
+                from parse import parser
+                from lexicals import lexer
+                for match in re.finditer(r'\{([^}]+)\}', raw):
+                    prefix = raw[last_end:match.start()]
+                    if prefix:
+                        self.emit(Opcode.OP_LOAD_CONST, prefix)
+                        if parts_count > 0:
+                            self.emit(Opcode.OP_ADD)
+                        parts_count += 1
+                    
+                    expr_text = match.group(1).strip()
+                    fmt_spec = None
+                    if ':' in expr_text and not expr_text.startswith('::'):
+                        expr_text, fmt_spec = expr_text.split(':', 1)
+                    
+                    expr_ast = parser.parse(expr_text, lexer=lexer)
+                    target_ast = expr_ast[0] if isinstance(expr_ast, list) and len(expr_ast) > 0 else expr_ast
+                    self.compile_node(target_ast)
+                    if fmt_spec:
+                        self.emit(Opcode.OP_FORMAT_VAL, fmt_spec)
+                    else:
+                        self.emit(Opcode.OP_TO_STR)
+                    if parts_count > 0:
+                        self.emit(Opcode.OP_ADD)
+                    parts_count += 1
+                    last_end = match.end()
+                
+                suffix = raw[last_end:]
+                if suffix:
+                    self.emit(Opcode.OP_LOAD_CONST, suffix)
+                    if parts_count > 0:
+                        self.emit(Opcode.OP_ADD)
 
         elif isinstance(node, Timeline_Decl):
             self.compile_node(node.value)
@@ -398,3 +492,145 @@ class Compiler:
                 self.emit(Opcode.OP_BUILD_ENUM, len(node.members))
             else:
                 self.emit(Opcode.OP_BUILD_ENUM, 0)
+            
+        elif isinstance(node, Pub_Node):
+            self.compile_node(node.node)
+            symbol_name = getattr(node.node, 'ident', None)
+            self.emit(Opcode.OP_PUB, symbol_name)
+
+        elif isinstance(node, Bind_Node):
+            self.compile_node(node.path)
+            if isinstance(node.alias, list) or node.alias == "*":
+                alias_name = node.alias
+            else:
+                alias_name = getattr(node.alias, 'ident', str(node.alias))
+            self.emit(Opcode.OP_BIND, alias_name)
+            
+    
+        elif isinstance(node, Range_Node):
+            if node.amount is not None :
+                self.compile_node(node.amount)
+                self.emit(Opcode.OP_RANGE, 1)
+            else: 
+                self.compile_node(node.start)
+                self.compile_node(node.stop)
+                if node.step is not None:
+                    self.compile_node(node.step)
+                    self.emit(Opcode.OP_RANGE, 3)
+                else:
+                    self.emit(Opcode.OP_RANGE, 2)
+            
+        elif isinstance(node, For_Range_Node):
+            # Compile Range expression
+            self.compile_node(node.range)
+        
+            # Create iterator
+            self.emit(Opcode.OP_ITER_NEW)
+            
+            # Jump to condition check
+            loop_start = len(self.instructions)
+
+            # Check if iterator is done
+            jump_if_done = self.emit(Opcode.OP_ITER_DONE, 0)
+            
+            # Load next value from iterater
+            self.emit(Opcode.OP_ITER_NEXT)
+            
+            # store in loop variable if exists
+            if node.ident:
+                self.emit(Opcode.OP_NAME, node.ident)
+                
+            self.break_stack.append([])
+            self.continue_stack.append([])
+            
+            if isinstance(node.for_block, list):
+                for stmt in node.for_block:
+                    self.compile_node(stmt)
+            else:
+                self.compile_node(node.for_block)
+            
+            # Handle Continue (jump back to condition check)
+            for cont_addr in self.continue_stack.pop():
+                self.patch(cont_addr, loop_start)
+            
+            # Jump back to start of loop
+            self.emit(Opcode.OP_JUMP, loop_start)
+            
+            # Patch the "done" jump to here (end of loop)
+            loop_end = len(self.instructions)
+            self.patch(jump_if_done, loop_end)
+
+            # Handle break statements
+            for break_addr in self.break_stack.pop():
+                self.patch(break_addr, loop_end)
+                
+        elif isinstance(node, Fix_Node):
+            self.compile_node(node.value)
+            self.emit(Opcode.OP_NAME, node.ident if isinstance(node.ident, str) else node.ident.ident)
+        
+        elif isinstance(node, Struct_Decl_Node):
+            pass
+
+        elif isinstance(node, Struct_Literal_Node):
+            field_name = list(node.field_values.keys())
+            for fname in field_name:
+                self.compile_node(node.field_values[fname])
+
+            self.emit(Opcode.OP_BUILD_STRUCT, (node.name, len(field_name), field_name))
+
+        elif isinstance(node, Field_Access_Node):
+            self.compile_node(node.target)
+            self.emit(Opcode.OP_GET_FIELD, node.field)
+
+        elif isinstance(node, Impl_Node):
+            for method in node.methods:
+                self.compile_node(method)
+                    
+        elif isinstance(node, Drop_Node):
+            self.emit(Opcode.OP_DROP, node.target)
+
+        elif isinstance(node, Async_Node):
+            fn = node.func
+            fn_compiler = Compiler()
+            fn_body = fn.body if isinstance(fn.body, list) else [fn.body]
+            fn_code = fn_compiler.compile(fn_body)
+            param_names = [p.ident if hasattr(p, 'ident') else p for p in (fn.parameter or [])]
+
+            defaults = {}
+            if fn.parameter:
+                for p in fn.parameter:
+                    if hasattr(p, 'value') and p.value is not None:
+                        from eval import eval_ast
+                        from environment import Environment
+                        defaults[p.ident] = eval_ast(p.value, Environment())
+
+            func_data = {
+                'name': fn.ident,
+                'params': param_names,
+                'defaults': defaults,
+                'code': fn_code,
+                'is_async': True,
+            }
+            self.emit(Opcode.OP_MAKE_ASYNC_FUNC, func_data)
+            self.emit(Opcode.OP_NAME, fn.ident)
+
+        elif isinstance(node, Await_Node):
+            self.compile_node(node.expr)   # compile the call → pushes future onto stack
+            self.emit(Opcode.OP_AWAIT)     # wait for the thread to finish
+
+        elif isinstance(node, Gaff_Node):
+            constraint_compiler = Compiler()
+            body_nodes = node.gaff_block if isinstance(node.gaff_block, list) else [node.gaff_block]
+            
+            # The constraint block should return its result. If the block doesn't explicitly return,
+            # we need it to evaluate and leave the result on the stack.
+            # But normally statements pop results. Since we're keeping it simple, we compile it,
+            # and in the VM we can just check what it evaluates to, or assume it uses OP_RETURN.
+            # Let's compile it just like a lambda.
+            constraint_code = constraint_compiler.compile(body_nodes)
+            
+            constraint_data = {
+                'target': node.ident,
+                'code': constraint_code,
+            }
+            self.emit(Opcode.OP_GAFF_CONSTRAINT, constraint_data)

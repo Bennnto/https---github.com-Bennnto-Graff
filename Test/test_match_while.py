@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -22,8 +22,11 @@ def test_case(code, var_name, expected_val):
         assert actual_val == expected_val, f"Failed for {var_name} expected {expected_val} got {actual_val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
+def test_match_while():
+    run_test_case("let res = 0; match (10 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 1)
+    run_test_case("let res = 0; match (2 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 2)
+    run_test_case("let count = 0; while count < 5 { count = count + 1; }", "count", 5)
+    run_test_case("let sum = 0; let i = 1; while i <= 4 { sum = sum + i; i = i + 1; }", "sum", 10)
+
 if __name__ == "__main__":
-    test_case("let res = 0; match (10 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 1)
-    test_case("let res = 0; match (2 > 5) : case (true) : { res = 1; } case (false) : { res = 2; }", "res", 2)
-    test_case("let count = 0; while count < 5 { count = count + 1; }", "count", 5)
-    test_case("let sum = 0; let i = 1; while i <= 4 { sum = sum + i; i = i + 1; }", "sum", 10)
+    test_match_while()

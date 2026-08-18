@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -23,7 +23,7 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_attempt():
     # Test 1: Succeeds on retry 2
     code1 = '''
     let count = 0;
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         status = "Fallback triggered";
     }
     '''
-    test_case(code1, "status", "Success on attempt 2")
+    run_test_case(code1, "status", "Success on attempt 2")
 
     # Test 2: Fails all retries and executes fallback
     code2 = '''
@@ -49,4 +49,7 @@ if __name__ == "__main__":
         res = "Fallback executed";
     }
     '''
-    test_case(code2, "res", "Fallback executed")
+    run_test_case(code2, "res", "Fallback executed")
+
+if __name__ == "__main__":
+    test_attempt()

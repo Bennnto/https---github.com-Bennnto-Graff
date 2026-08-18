@@ -1,11 +1,13 @@
 from enum import Enum, auto
 
 class Opcode(Enum):
-    OP_POP = auto() 
+    OP_POP = auto()             # pop variable or operator from stack
     OP_NAME = auto()
     OP_CONST = auto()
-    OP_LOAD_CONST = auto()
-    OP_LOAD_NAME = auto()
+    OP_LOAD_CONST = auto()      
+    OP_LOAD_NAME = auto()       # load variable name from stack
+    OP_STORE_CONST = auto()     # store variable value and name in stack
+    OP_FIX = auto()             # fix variable
 
     # Arithmetic 
     OP_ADD = auto()
@@ -16,10 +18,16 @@ class Opcode(Enum):
     OP_POW = auto()
     OP_NEG = auto()
 
-    # Logical
+    # Logical & Bitwise
     OP_AND = auto()
     OP_OR = auto()
     OP_NOT = auto()
+    OP_LSHIFT = auto()
+    OP_RSHIFT = auto()
+    OP_BITXOR = auto()
+    OP_BITNOT = auto()
+    OP_FORMAT_VAL = auto()
+    OP_SLICE = auto()
 
     # Comparison
     OP_EQ = auto()
@@ -43,9 +51,12 @@ class Opcode(Enum):
     OP_BUILD_HASH = auto()
     OP_BUILD_ARRAY = auto()
     OP_BUILD_ENUM = auto()
+    OP_BUILD_STRUCT = auto()
     OP_BINARY_INDEX = auto()
     OP_STORE_INDEX = auto()
     OP_CALL_METHOD = auto()
+    OP_GET_FIELD = auto()
+    
 
     # I/O
     OP_DISP = auto()
@@ -71,8 +82,32 @@ class Opcode(Enum):
 
     # Interpolation
     OP_FSTR_EVAL = auto()
+    OP_TO_STR = auto()
 
     # Others
     OP_ASSERT = auto()
     OP_FALSE = auto()
     OP_HALT = auto() 
+
+    OP_PUB = auto()
+    OP_BIND = auto()
+    
+    # Range & For Range
+    OP_RANGE = auto()
+    OP_ITER_NEW = auto()
+    OP_ITER_DONE = auto()
+    OP_ITER_NEXT = auto()
+    
+    # MATCH
+    OP_DUP = auto()
+
+    # Drop
+    OP_DROP = auto()            # Drop variable and free heap memory
+
+    # Async / Await
+    OP_MAKE_ASYNC_FUNC = auto() # like OP_MAKE_FUNC but marks function as async
+    OP_AWAIT = auto()           # wait for an async future result
+
+    # Gaff Constraints
+    OP_GAFF_CONSTRAINT = auto()
+    

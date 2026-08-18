@@ -1,0 +1,17 @@
+bind "std::math"::*;
+bind "std::time"::*;
+
+fn main_demo: int [] {
+    let x: int = 10;
+    let y: int = 20;
+    let sum: int = x + y;
+    
+    disp(sum);
+    
+    let sq: float = sqrt(49.0);
+    disp(sq);
+    
+    return sum;
+}
+
+main_demo();

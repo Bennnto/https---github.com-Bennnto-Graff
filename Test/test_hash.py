@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -23,8 +23,11 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
+def test_hash():
+    run_test_case('let user: hash[str, int] = {"math": 95, "english": 88};', "user", {"math": 95, "english": 88})
+    run_test_case('let user: hash[str, int] = {"math": 95}; user["math"] = 100; let val = user["math"];', "val", 100)
+    run_test_case('let user: hash[str, int] = {"math": 95, "english": 88}; let length = user.len();', "length", 2)
+    run_test_case('let user: hash[str, str] = {"name": "Ben"}; let val = user["name"];', "val", "Ben")
+
 if __name__ == "__main__":
-    test_case('let user: hash[str, int] = {"math": 95, "english": 88};', "user", {"math": 95, "english": 88})
-    test_case('let user: hash[str, int] = {"math": 95}; user["math"] = 100; let val = user["math"];', "val", 100)
-    test_case('let user: hash[str, int] = {"math": 95, "english": 88}; let length = user.len();', "length", 2)
-    test_case('let user: hash[str, str] = {"name": "Ben"}; let val = user["name"];', "val", "Ben")
+    test_hash()

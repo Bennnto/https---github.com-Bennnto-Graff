@@ -8,7 +8,7 @@ from parse import parser
 from eval import eval_ast
 from semantics import SymbolTable, Type_Infer
 
-def test_case(code, var_name, expected_val):
+def run_test_case(code, var_name, expected_val):
     ast = parser.parse(code, lexer=lexer)
     symtab = SymbolTable()
     inferrer = Type_Infer(symtab)
@@ -23,14 +23,14 @@ def test_case(code, var_name, expected_val):
         assert val == expected_val, f"Failed for {var_name} expected {expected_val} got {val}"
     print(f"Passed : '{var_name}' == {expected_val}")
 
-if __name__ == "__main__":
+def test_assert():
     code1 = '''
     let x = 10;
     assert x > 0;
     assert_eq x, 10;
     let res = "Passed";
     '''
-    test_case(code1, "res", "Passed")
+    run_test_case(code1, "res", "Passed")
 
     code2 = '''
     let caught_msg = "";
@@ -41,4 +41,7 @@ if __name__ == "__main__":
             caught_msg = err;
         }
     '''
-    test_case(code2, "caught_msg", "Assertion Error: Math assertion failed!")
+    run_test_case(code2, "caught_msg", "Assertion Error: Math assertion failed!")
+
+if __name__ == "__main__":
+    test_assert()
