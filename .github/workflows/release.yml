@@ -1,4 +1,4 @@
-name: Release Gaff Native Compiler Executables
+name: Build Gaff Standalone Binary Artifacts
 
 on:
   push:
@@ -57,7 +57,7 @@ jobs:
             chmod +x dist/${{ matrix.asset_name }}
           fi
 
-      - name: Upload Build Artifacts
+      - name: Upload Build Artifacts (CI Only)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
@@ -65,7 +65,7 @@ jobs:
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
           files: dist/${{ matrix.asset_name }}
         env:
