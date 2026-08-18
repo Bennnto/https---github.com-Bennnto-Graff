@@ -1,0 +1,64 @@
+name: Release Gaff Native Compiler Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    name: Build Standalone Binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: gaff-linux
+          - os: macos-latest
+            asset_name: gaff-macos
+          - os: windows-latest
+            asset_name: gaff-windows.exe
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ply pyinstaller
+
+      - name: Build Standalone Executable with PyInstaller
+        shell: bash
+        run: |
+          pyinstaller --onefile --name gaff \
+            --add-data "src:src" \
+            --add-data "cli:cli" \
+            gaff
+          
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp dist/gaff.exe dist/${{ matrix.asset_name }}
+          else
+            cp dist/gaff dist/${{ matrix.asset_name }}
+          fi
+
+      - name: Test Executable Permissions
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" != "windows-latest" ]; then
+            chmod +x dist/${{ matrix.asset_name }}
+          fi
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: dist/${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
