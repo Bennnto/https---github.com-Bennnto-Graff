@@ -1,20 +1,21 @@
 """
 Gaff Programming Language CLI Entrypoint
-Run scripts with JIT hardware compilation by default and manifest auto-binding.
+Run scripts with Native Codegen compilation and execution by default.
 """
 
 import sys
 import os
+import subprocess
 
 from parse import parser
 from lexicals import lexer
-from semantics import SymbolTable, Type_Infer
-from jitto_adapter import JittoASTAdapter
+from semantics import SymbolTable, Type_Infer, insert_auto_drop
+from native_codegen import NativeCodegen
 import manifest
 import repl
 import error_reporter
 
-GAFF_VERSION = "1.0.0 (with jitto JIT Engine)"
+GAFF_VERSION = "1.0.0 (Native Codegen Release)"
 
 def get_manifest_path():
     if os.path.exists("project.graff"):
@@ -34,32 +35,50 @@ def run_script(filepath, use_manifest=True):
         print(f"Error: Failed to parse Gaff script '{filepath}'.")
         sys.exit(1)
 
-    manifest_file = get_manifest_path()
-
-    if use_manifest and os.path.exists(manifest_file):
-        env, config = manifest.load_manifest(manifest_file)
-    else:
-        from eval import Environment
-        env = Environment()
-
     symtab = SymbolTable()
-    symtab.has_wildcard = True
-    for k, v in env.bindings.items():
-        if k not in symtab.scopes[-1]:
-            symtab.scopes[-1][k] = 'any'
-
     try:
         Type_Infer(symtab).infer_program(ast)
-    except Exception:
-        pass
-
-    try:
-        JittoASTAdapter.execute(ast, env)
+        ast = insert_auto_drop(ast)
     except Exception as e:
         line_no = getattr(e, 'lineno', 1)
-        err_msg = error_reporter.format_error(filepath, code, line_no, 0, str(e), error_type="Execution Error")
+        err_msg = error_reporter.format_error(filepath, code, line_no, 0, str(e), error_type="Type Error")
         print(err_msg)
         sys.exit(1)
+
+    os.makedirs("dist", exist_ok=True)
+    base_name = os.path.splitext(os.path.basename(filepath))[0]
+    c_path = os.path.join("dist", f"{base_name}.c")
+    output_binary = os.path.join("dist", base_name)
+
+    codegen = NativeCodegen()
+    c_code = codegen.generate(ast, main_name="main")
+    with open(c_path, "w", encoding="utf-8") as f:
+        f.write(c_code)
+
+    clang_bin = "/opt/homebrew/opt/llvm/bin/clang"
+    if not os.path.exists(clang_bin):
+        clang_bin = "clang"
+
+    compiled = False
+    try:
+        res = subprocess.run([clang_bin, "-O3", c_path, "-o", output_binary, "-lm"], capture_output=True, text=True)
+        if res.returncode == 0:
+            compiled = True
+    except FileNotFoundError:
+        try:
+            res = subprocess.run(["gcc", "-O3", c_path, "-o", output_binary, "-lm"], capture_output=True, text=True)
+            if res.returncode == 0:
+                compiled = True
+        except FileNotFoundError:
+            pass
+
+    if compiled and os.path.exists(output_binary):
+        subprocess.run([output_binary])
+    else:
+        from eval import eval_ast, Environment
+        env = Environment()
+        for stmt in ast:
+            eval_ast(stmt, env)
 
 def main():
     args = sys.argv[1:]

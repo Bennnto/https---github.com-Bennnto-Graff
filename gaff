@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Gaff Language Executable CLI (gaff / gaffc)
-Default compiler driver using Cranelift IR (.clif) for native release builds.
+Gaff Language Executable CLI (gaff)
+Native Compiler Driver using Native Codegen for standalone release builds.
 """
 
 import sys
@@ -9,17 +9,18 @@ import os
 import argparse
 import subprocess
 
-# Ensure src path is imported cleanly
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+# Ensure src and cli paths are imported cleanly
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(ROOT_DIR, 'src'))
+sys.path.insert(0, os.path.join(ROOT_DIR, 'cli'))
 
 from parse import parser
 from lexicals import lexer
 from semantics import SymbolTable, Type_Infer, insert_auto_drop, BorrowChecker, BorrowError
-from cranelift_codegen import CraneliftCodegen
 from native_codegen import NativeCodegen
 from repl import repl
 
-def compile_clif_release(input_path: str, output_binary: str = None, emit_clif_only: str = False, run_immediately: bool = False):
+def compile_native_release(input_path: str, output_binary: str = None, emit_c_only: bool = False, run_immediately: bool = False):
     if not os.path.exists(input_path):
         print(f"❌ Error: Source file '{input_path}' not found.")
         sys.exit(1)
@@ -29,7 +30,6 @@ def compile_clif_release(input_path: str, output_binary: str = None, emit_clif_o
 
     os.makedirs("dist", exist_ok=True)
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    clif_path = os.path.join("dist", f"{base_name}.clif")
     c_path = os.path.join("dist", f"{base_name}.c")
 
     if output_binary is None:
@@ -58,29 +58,22 @@ def compile_clif_release(input_path: str, output_binary: str = None, emit_clif_o
     # 3. Scope Auto-Drop AST Pass
     ast = insert_auto_drop(ast)
 
-    # 4. Cranelift IR & Native C Code Generation
-    codegen_clif = CraneliftCodegen()
-    clif_code = codegen_clif.generate(ast, main_name="main")
-
-    with open(clif_path, 'w', encoding='utf-8') as f:
-        f.write(clif_code)
-
+    # 4. Native C Code Generation via NativeCodegen
     codegen_native = NativeCodegen()
     c_code = codegen_native.generate(ast, main_name="main")
 
     with open(c_path, 'w', encoding='utf-8') as f:
         f.write(c_code)
 
-    print(f"  🟢 Generated Cranelift IR -> '{clif_path}'")
-    print(f"  🟢 Generated Native Source -> '{c_path}'")
+    print(f"  🟢 Generated Native C Source -> '{c_path}'")
 
-    if emit_clif_only:
-        print("\n=== CRANELIFT IR (.clif) OUTPUT ===")
-        print(clif_code)
-        print("===================================\n")
+    if emit_c_only:
+        print("\n=== NATIVE C SOURCE OUTPUT ===")
+        print(c_code)
+        print("===============================\n")
         return
 
-    # 5. Compile to Standalone Native Binary Executable via Clang (-O3)
+    # 5. Compile to Standalone Native Binary Executable via Clang/GCC (-O3)
     print(f"  🚀 Compiling Native Standalone Binary -> '{output_binary}'")
 
     clang_bin = "/opt/homebrew/opt/llvm/bin/clang"
@@ -94,44 +87,41 @@ def compile_clif_release(input_path: str, output_binary: str = None, emit_clif_o
             compiled_native = True
             print(f"  ✅ RELEASE BUILD SUCCESSFUL: '{output_binary}'")
         else:
-            print(f"  ⚠️ Clang Error: {res.stderr.strip()}")
+            print(f"  ⚠️ Compiler Output: {res.stderr.strip()}")
     except FileNotFoundError:
-        pass
-
-    if not compiled_native:
-        print(f"  ℹ️  Cranelift IR ready at '{clif_path}'")
+        try:
+            res = subprocess.run(["gcc", "-O3", c_path, "-o", output_binary, "-lm"], capture_output=True, text=True)
+            if res.returncode == 0:
+                compiled_native = True
+                print(f"  ✅ RELEASE BUILD SUCCESSFUL: '{output_binary}'")
+        except FileNotFoundError:
+            print("❌ Error: Neither clang nor gcc native C compilers were found.")
 
     # 6. Run immediately if -r flag passed
     if run_immediately:
-        print("\n▶️  Executing Release Standalone Binary:")
+        print("\n▶️  Executing Release Standalone Native Binary:")
         print("-----------------------------------------------------------------")
         if compiled_native and os.path.exists(output_binary):
             subprocess.run([output_binary])
         else:
-            from compiler import Compiler
-            from vm import VM
-            compiler = Compiler()
-            vm = VM()
-            insts = compiler.compile(ast)
-            vm.run(insts)
+            print("❌ Error: Execution failed - Native binary was not generated.")
         print("-----------------------------------------------------------------")
 
 def main():
     if len(sys.argv) == 1:
-        # Launch Interactive REPL if no arguments provided
         repl()
         return
 
-    parser_cli = argparse.ArgumentParser(description="Gaff Language CLI - Cranelift (.clif) Release Compiler")
+    parser_cli = argparse.ArgumentParser(description="Gaff Language CLI - Exclusive Native Codegen Compiler")
     parser_cli.add_argument("file", nargs="?", help="Path to .gaff source file")
     parser_cli.add_argument("-o", "--output", help="Output standalone executable path (default: dist/<name>)")
-    parser_cli.add_argument("-r", "--run", action="store_true", help="Compile and execute release binary immediately")
-    parser_cli.add_argument("--clif", action="store_true", help="Emit generated Cranelift IR (.clif) to stdout")
+    parser_cli.add_argument("-r", "--run", action="store_true", help="Compile and execute release native binary immediately")
+    parser_cli.add_argument("--emit-c", action="store_true", help="Emit generated Native C source code to stdout")
 
     args = parser_cli.parse_args()
 
     if args.file:
-        compile_clif_release(args.file, output_binary=args.output, emit_clif_only=args.clif, run_immediately=args.run)
+        compile_native_release(args.file, output_binary=args.output, emit_c_only=args.emit_c, run_immediately=args.run)
     else:
         repl()
 
