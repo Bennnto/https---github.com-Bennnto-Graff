@@ -12,7 +12,7 @@ Gaff combines high-level syntax expressiveness with low-level runtime control. T
 
 ---
 
-## Compiler Architecture & Execution Pipeline
+## Architecture & Execution Pipeline
 
 The compilation process in Gaff follows a multi-pass pipeline:
 
@@ -139,6 +139,16 @@ for f in Test/test_*.py; do PYTHONPATH=src:cli:. python3 "$f"; done
 ## Language Syntax Reference
 
 ### Variables & Primitives
+* primitives type variable
+  * Signed Integer : i8, i16, i32, i64
+  * Unsigned Integer : u8, u16, u32, u64
+  * Floating Point : f32, f64
+  * Size int : isize, usize, 
+  * Bool : true, false
+  * Char : 'a', 'b' ...
+  * String : "String"
+  * Fixed Size String : str[N]
+  * Unit(void) 
 ```gaff
 let x: int = 42;
 let name: str = "Gaff";
